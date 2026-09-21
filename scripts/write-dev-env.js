@@ -1,0 +1,11 @@
+const crypto = require("crypto");
+const fs = require("fs");
+let e = fs.readFileSync(".env.example", "utf8");
+const k = () => crypto.randomBytes(32).toString("hex");
+e = e.replace('TOKEN_ENCRYPTION_KEY=""', `TOKEN_ENCRYPTION_KEY="${k()}"`);
+e = e.replace('SESSION_SECRET=""', `SESSION_SECRET="${k()}"`);
+e = e.replace('CRON_SECRET=""', `CRON_SECRET="${k()}"`);
+e = e.replace('INSTAGRAM_APP_ID=""', 'INSTAGRAM_APP_ID="000000000000000"');
+e = e.replace('INSTAGRAM_APP_SECRET=""', 'INSTAGRAM_APP_SECRET="dev-placeholder-secret"');
+fs.writeFileSync(".env", e);
+console.log("wrote .env");

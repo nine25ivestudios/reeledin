@@ -1,0 +1,86 @@
+// Postgres for local and production (Neon). Use the pooled connection string
+// (hostname contains -pooler). Do not use Neon's direct/unpooled URL in DATABASE_URL —
+// serverless deploys open many connections and will hit Neon's limit.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String?
+  createdAt DateTime @default(now())
+
+  accounts ConnectedAccount[]
+  profile  Profile?
+}
+
+model ConnectedAccount {
+  id             String    @id @default(cuid())
+  userId         String
+  platform       String
+  externalId     String
+  username       String
+  accountType    String
+  accessToken    String
+  tokenExpiresAt DateTime
+  lastSyncedAt   DateTime?
+  lastSyncError  String?
+  profilePictureUrl String?
+
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  snapshots         StatsSnapshot[]
+  audienceSnapshots AudienceSnapshot[]
+
+  @@unique([platform, externalId])
+}
+
+model StatsSnapshot {
+  id             String   @id @default(cuid())
+  accountId      String
+  followersCount Int
+  mediaCount     Int
+  engagementRate Float
+  avgLikes       Float
+  avgComments    Float
+  postsAnalyzed  Int      @default(0)
+  recentPosts    String   @default("[]")
+  takenAt        DateTime @default(now())
+
+  account ConnectedAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId, takenAt])
+}
+
+model AudienceSnapshot {
+  id           String   @id @default(cuid())
+  accountId    String
+  // JSON payloads stored as text so SQLite (local) and Postgres (prod) share the same schema.
+  ageBrackets  String
+  genderSplit  String
+  topCities    String
+  topCountries String
+  takenAt      DateTime @default(now())
+
+  account ConnectedAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId, takenAt])
+}
+
+model Profile {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  slug        String   @unique
+  displayName String
+  niche       String   @default("")
+  bio         String   @default("")
+  isPublic    Boolean  @default(true)
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
