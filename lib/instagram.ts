@@ -63,7 +63,13 @@ export type RecentPost = {
   mediaType: IgMediaType;
   likeCount: number;
   commentsCount: number;
+  timestamp: string | null;
+  playCount: number | null;
+  mediaProductType: string | null;
+  caption: string | null;
 };
+
+const CAPTION_STORE_LIMIT = 600;
 
 export type MediaEngagement = {
   likeCount: number;
@@ -231,6 +237,9 @@ export async function refreshLongLivedToken(token: string): Promise<{
 }
 
 export async function fetchInstagramProfile(accessToken: string): Promise<InstagramProfile> {
+  // Instagram Login /me fields: id, user_id, username, name, account_type,
+  // profile_picture_url, followers_count, follows_count, media_count.
+  // `category` is not on this path — do not request or invent niche tags.
   const params = new URLSearchParams({
     fields: "id,username,account_type,followers_count,media_count,name,profile_picture_url",
     access_token: accessToken,
@@ -279,9 +288,120 @@ export async function fetchInstagramProfile(accessToken: string): Promise<Instag
   };
 }
 
+type MediaRow = RecentPost & { id: string };
+
+function insightNumeric(body: unknown): number | null {
+  if (!body || typeof body !== "object") return null;
+  const data = (body as { data?: unknown }).data;
+  const first = Array.isArray(data) ? data[0] : null;
+  if (!first || typeof first !== "object") return null;
+  const rec = first as Record<string, unknown>;
+  const total = rec.total_value;
+  if (total && typeof total === "object") {
+    const value = (total as { value?: unknown }).value;
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+  }
+  const values = rec.values;
+  if (Array.isArray(values) && values[0] && typeof values[0] === "object") {
+    const value = (values[0] as { value?: unknown }).value;
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+  }
+  return null;
+}
+
+export function isReelMedia(post: { mediaType: string; mediaProductType?: string | null }): boolean {
+  const product = (post.mediaProductType ?? "").toUpperCase();
+  if (product === "REELS") return true;
+  if (product) return false;
+  const type = post.mediaType.toUpperCase();
+  return type === "VIDEO" || type === "REEL" || type === "REELS";
+}
+
+async function fetchMediaPlayCount(mediaId: string, accessToken: string, reel: boolean): Promise<number | null> {
+  // `views` is the current media metric. `plays` remains as a fallback for older reels.
+  // Do not request deprecated `video_views`.
+  const metrics = reel ? ["views", "plays"] : ["views"];
+  for (const metric of metrics) {
+    const params = new URLSearchParams({
+      metric,
+      access_token: accessToken,
+    });
+    try {
+      const res = await fetch(`https://graph.instagram.com/${mediaId}/insights?${params.toString()}`);
+      const body = await readJson<unknown>(res, "Instagram rejected a media insights request.");
+      if (!res.ok) continue;
+      const value = insightNumeric(body);
+      if (value !== null) return value;
+    } catch {
+      // Other posts still sync if one media insight call fails.
+    }
+  }
+  return null;
+}
+
+async function attachPlayCounts(accessToken: string, rows: MediaRow[]): Promise<void> {
+  const chunkSize = 4;
+  for (let i = 0; i < rows.length; i += chunkSize) {
+    const chunk = rows.slice(i, i + chunkSize);
+    await Promise.all(
+      chunk.map(async (row) => {
+        row.playCount = await fetchMediaPlayCount(row.id, accessToken, isReelMedia(row));
+      }),
+    );
+  }
+}
+
+export async function fetchMonthlyReach(igUserId: string, accessToken: string): Promise<number | null> {
+  const until = Math.floor(Date.now() / 1000);
+  const since = until - 28 * 24 * 60 * 60;
+
+  const attempts: URLSearchParams[] = [
+    new URLSearchParams({
+      metric: "reach",
+      period: "days_28",
+      metric_type: "total_value",
+      access_token: accessToken,
+    }),
+    new URLSearchParams({
+      metric: "reach",
+      period: "day",
+      metric_type: "total_value",
+      since: String(since),
+      until: String(until),
+      access_token: accessToken,
+    }),
+    new URLSearchParams({
+      metric: "reach",
+      period: "days_28",
+      access_token: accessToken,
+    }),
+  ];
+
+  for (const params of attempts) {
+    try {
+      const res = await fetch(`https://graph.instagram.com/${igUserId}/insights?${params.toString()}`);
+      const body = await readJson<unknown>(res, "Instagram rejected the reach insights request.");
+      if (!res.ok) continue;
+      const value = insightNumeric(body);
+      if (value !== null) return Math.round(value);
+    } catch {
+      // Reach is optional; stats still land without it.
+    }
+  }
+  return null;
+}
+
+export function computeAvgReelViews(media: RecentPost[]): number | null {
+  const reels = media.filter((item) => isReelMedia(item) && item.playCount !== null);
+  if (reels.length === 0) return null;
+  const total = reels.reduce((sum, item) => sum + (item.playCount ?? 0), 0);
+  return total / reels.length;
+}
+
 export async function fetchRecentMediaEngagement(accessToken: string): Promise<RecentPost[]> {
   const params = new URLSearchParams({
-    fields: "like_count,comments_count,thumbnail_url,media_url,permalink,media_type",
+    fields:
+      "id,caption,like_count,comments_count,thumbnail_url,media_url,permalink,media_type,media_product_type,timestamp",
     limit: "12",
     access_token: accessToken,
   });
@@ -295,12 +415,16 @@ export async function fetchRecentMediaEngagement(accessToken: string): Promise<R
 
   const body = await readJson<{
     data?: Array<{
+      id?: string;
+      caption?: string;
       like_count?: number;
       comments_count?: number;
       thumbnail_url?: string;
       media_url?: string;
       permalink?: string;
       media_type?: string;
+      media_product_type?: string;
+      timestamp?: string;
     }>;
     error?: { message?: string };
   }>(res, "Instagram rejected the media request.");
@@ -312,13 +436,23 @@ export async function fetchRecentMediaEngagement(accessToken: string): Promise<R
     );
   }
 
-  return (body.data ?? []).map((item) => ({
-    likeCount: item.like_count ?? 0,
-    commentsCount: item.comments_count ?? 0,
-    mediaType: item.media_type ?? "IMAGE",
-    permalink: item.permalink ?? null,
-    thumbnailUrl: item.thumbnail_url || item.media_url || null,
-  }));
+  const rows: MediaRow[] = (body.data ?? [])
+    .filter((item) => Boolean(item.id))
+    .map((item) => ({
+      id: String(item.id),
+      likeCount: item.like_count ?? 0,
+      commentsCount: item.comments_count ?? 0,
+      mediaType: item.media_type ?? "IMAGE",
+      mediaProductType: item.media_product_type ?? null,
+      permalink: item.permalink ?? null,
+      thumbnailUrl: item.thumbnail_url || item.media_url || null,
+      timestamp: item.timestamp ?? null,
+      playCount: null,
+      caption: item.caption ? item.caption.slice(0, CAPTION_STORE_LIMIT) : null,
+    }));
+
+  await attachPlayCounts(accessToken, rows);
+  return rows.map(({ id: _id, ...post }) => post);
 }
 
 type InsightResult = { dimension_values?: string[]; value?: number };
@@ -484,7 +618,7 @@ export function computeContentMix(media: Array<{ mediaType: string }>): ContentM
   return { image: image / total, video: video / total, carousel: carousel / total };
 }
 
-export function postsForSnapshot(media: RecentPost[], limit = 9): RecentPost[] {
+export function postsForSnapshot(media: RecentPost[], limit = 12): RecentPost[] {
   return media.slice(0, limit);
 }
 

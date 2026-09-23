@@ -7,6 +7,7 @@ import {
   computeEngagement,
   fetchFollowerDemographics,
   fetchInstagramProfile,
+  fetchMonthlyReach,
   fetchRecentMediaEngagement,
   InstagramApiError,
   postsForSnapshot,
@@ -71,6 +72,7 @@ export async function syncAccount(accountId: string, options?: { forceAudience?:
     const profile = await fetchInstagramProfile(token);
     const media = await fetchRecentMediaEngagement(token);
     const stats = computeEngagement(media, profile.followersCount);
+    const reach = await fetchMonthlyReach(profile.id, token);
 
     let audienceError: string | null = null;
     if (profile.followersCount >= AUDIENCE_MIN_FOLLOWERS && (options?.forceAudience || (await audienceDue(account.id)))) {
@@ -108,6 +110,7 @@ export async function syncAccount(accountId: string, options?: { forceAudience?:
           avgComments: stats.avgComments,
           postsAnalyzed: stats.postsAnalyzed,
           recentPosts: JSON.stringify(postsForSnapshot(media)),
+          reach,
         },
       }),
       prisma.connectedAccount.update({

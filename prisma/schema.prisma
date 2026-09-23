@@ -50,6 +50,8 @@ model StatsSnapshot {
   avgComments    Float
   postsAnalyzed  Int      @default(0)
   recentPosts    String   @default("[]")
+  // Unique accounts reached in the last 28 days from Instagram user insights (`reach`).
+  reach          Int?
   takenAt        DateTime @default(now())
 
   account ConnectedAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)

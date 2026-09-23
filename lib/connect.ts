@@ -5,6 +5,7 @@ import {
   exchangeForLongLivedToken,
   fetchFollowerDemographics,
   fetchInstagramProfile,
+  fetchMonthlyReach,
   fetchRecentMediaEngagement,
   postsForSnapshot,
 } from "./instagram";
@@ -27,6 +28,7 @@ export async function connectFromAuthorizationCode(code: string) {
   const ig = await fetchInstagramProfile(longLived.accessToken);
   const media = await fetchRecentMediaEngagement(longLived.accessToken);
   const stats = computeEngagement(media, ig.followersCount);
+  const reach = await fetchMonthlyReach(ig.id, longLived.accessToken);
   const encrypted = encryptToken(longLived.accessToken);
   const tokenExpiresAt = new Date(Date.now() + longLived.expiresIn * 1000);
 
@@ -77,6 +79,7 @@ export async function connectFromAuthorizationCode(code: string) {
       avgComments: stats.avgComments,
       postsAnalyzed: stats.postsAnalyzed,
       recentPosts: JSON.stringify(postsForSnapshot(media)),
+      reach,
     },
   });
 

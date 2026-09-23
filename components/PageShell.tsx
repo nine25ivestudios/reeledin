@@ -30,14 +30,16 @@ export function PageShell({
   children,
   showConnect = true,
   width = "wide",
+  headerNote,
 }: {
   children: React.ReactNode;
   showConnect?: boolean;
   width?: Width;
+  headerNote?: string;
 }) {
   return (
     <div className={`mx-auto min-h-screen w-full ${WIDTH[width]} px-5`}>
-      <SiteHeader showConnect={showConnect} />
+      <SiteHeader showConnect={showConnect} note={headerNote} />
       {children}
       <SiteFooter />
     </div>

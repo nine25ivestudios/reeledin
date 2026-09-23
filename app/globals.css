@@ -3,7 +3,6 @@
 @tailwind utilities;
 
 :root {
-  --font-general-sans: "General Sans", system-ui, sans-serif;
   --background: #000000;
   --foreground: #f5f5f5;
   --card: #121212;
@@ -13,6 +12,9 @@
   --muted-foreground: #a8a8a8;
   --destructive: #ed4956;
   --success: #3ddc84;
+  --blue: #0095f6;
+  --violet: #8b7cf8;
+  --chart-gray: #6b6b6b;
   --ig-gradient: conic-gradient(
     from 180deg,
     #405de6,
@@ -40,6 +42,21 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+@keyframes chart-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.chart-line {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: chart-draw 1.15s ease-out forwards;
+}
+
 @keyframes freshness-pulse {
   0%,
   100% {
@@ -52,6 +69,36 @@ body {
 
 .freshness-pulse {
   animation: freshness-pulse 3.5s ease-in-out infinite;
+}
+
+.flag {
+  font-family: "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
+}
+
+.loc-panel[data-active="false"],
+.loc-print-label {
+  display: none;
+}
+
+@media print {
+  html {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .loc-toggle {
+    display: none !important;
+  }
+
+  .loc-panel,
+  .loc-panel[data-active="false"],
+  .loc-print-label {
+    display: block !important;
+  }
+
+  .loc-panel + .loc-panel {
+    margin-top: 1.25rem;
+  }
 }
 
 a:focus-visible,
@@ -74,5 +121,10 @@ select:focus-visible {
 
   .freshness-pulse {
     animation: none !important;
+  }
+
+  .chart-line {
+    animation: none !important;
+    stroke-dashoffset: 0;
   }
 }

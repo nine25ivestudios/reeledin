@@ -1,10 +1,32 @@
 import { cookies } from "next/headers";
 import { prisma } from "./prisma";
 import { getSessionUserId } from "./session";
-import type { PlaceShare, RecentPost } from "./instagram";
+import { relativePercentDelta, snapshotClosestToDaysAgo, type StatDelta } from "./format";
+import { computeAvgReelViews, type PlaceShare, type RecentPost } from "./instagram";
 
 export type AgeBrackets = Record<string, number>;
 export type GenderSplit = { female: number; male: number; undisclosed: number };
+
+export type AudienceView = {
+  ageBrackets: AgeBrackets;
+  genderSplit: GenderSplit;
+  topCities: PlaceShare[];
+  topCountries: PlaceShare[];
+  takenAt: Date;
+};
+
+export type TrendPoint = {
+  takenAt: Date;
+  engagementRate: number;
+  reach: number | null;
+};
+
+export type CredentialDeltas = {
+  followers: StatDelta | null;
+  engagementRate: StatDelta | null;
+  avgReelViews: StatDelta | null;
+  monthlyReach: StatDelta | null;
+};
 
 function parseJson(value: unknown): unknown {
   if (typeof value === "string") {
@@ -56,19 +78,74 @@ export function parsePlaces(value: unknown): PlaceShare[] {
 export function parseRecentPosts(value: unknown): RecentPost[] {
   const parsed = parseJson(value);
   if (!Array.isArray(parsed)) return [];
-  return parsed
-    .map((item) => {
-      if (!item || typeof item !== "object") return null;
-      const rec = item as Record<string, unknown>;
-      return {
-        thumbnailUrl: rec.thumbnailUrl ? String(rec.thumbnailUrl) : null,
-        permalink: rec.permalink ? String(rec.permalink) : null,
-        mediaType: String(rec.mediaType ?? "IMAGE"),
-        likeCount: Number(rec.likeCount ?? 0) || 0,
-        commentsCount: Number(rec.commentsCount ?? 0) || 0,
-      };
-    })
-    .filter((item): item is RecentPost => item !== null);
+  const posts: RecentPost[] = [];
+  for (const item of parsed) {
+    if (!item || typeof item !== "object") continue;
+    const rec = item as Record<string, unknown>;
+    const playRaw = rec.playCount;
+    const playCount =
+      playRaw === null || playRaw === undefined || playRaw === "" ? null : Number(playRaw);
+    posts.push({
+      thumbnailUrl: rec.thumbnailUrl ? String(rec.thumbnailUrl) : null,
+      permalink: rec.permalink ? String(rec.permalink) : null,
+      mediaType: String(rec.mediaType ?? "IMAGE"),
+      mediaProductType: rec.mediaProductType ? String(rec.mediaProductType) : null,
+      likeCount: Number(rec.likeCount ?? 0) || 0,
+      commentsCount: Number(rec.commentsCount ?? 0) || 0,
+      timestamp: rec.timestamp ? String(rec.timestamp) : null,
+      playCount: playCount !== null && Number.isFinite(playCount) ? playCount : null,
+      caption: typeof rec.caption === "string" && rec.caption ? rec.caption : null,
+    });
+  }
+  return posts;
+}
+
+function mapAudience(audienceRow: {
+  ageBrackets: string;
+  genderSplit: string;
+  topCities: string;
+  topCountries: string;
+  takenAt: Date;
+} | null): AudienceView | null {
+  if (!audienceRow) return null;
+  return {
+    ageBrackets: parseAgeBrackets(audienceRow.ageBrackets),
+    genderSplit: parseGenderSplit(audienceRow.genderSplit),
+    topCities: parsePlaces(audienceRow.topCities),
+    topCountries: parsePlaces(audienceRow.topCountries),
+    takenAt: audienceRow.takenAt,
+  };
+}
+
+function computeDeltas(
+  history: Array<{
+    takenAt: Date;
+    followersCount: number;
+    engagementRate: number;
+    reach: number | null;
+    recentPosts: string;
+  }>,
+): CredentialDeltas {
+  const empty: CredentialDeltas = {
+    followers: null,
+    engagementRate: null,
+    avgReelViews: null,
+    monthlyReach: null,
+  };
+  if (history.length === 0) return empty;
+  const current = history[history.length - 1];
+  const baseline = snapshotClosestToDaysAgo(history);
+  if (!baseline) return empty;
+
+  return {
+    followers: relativePercentDelta(current.followersCount, baseline.followersCount),
+    engagementRate: relativePercentDelta(current.engagementRate, baseline.engagementRate),
+    avgReelViews: relativePercentDelta(
+      computeAvgReelViews(parseRecentPosts(current.recentPosts)),
+      computeAvgReelViews(parseRecentPosts(baseline.recentPosts)),
+    ),
+    monthlyReach: relativePercentDelta(current.reach, baseline.reach),
+  };
 }
 
 export async function getDashboardData() {
@@ -105,20 +182,27 @@ export async function getDashboardData() {
   const account = user.accounts.find((a) => a.platform === "instagram") ?? user.accounts[0] ?? null;
   const history = account?.snapshots ?? [];
   const snapshot = history.length > 0 ? history[history.length - 1] : null;
-  const audienceRow = account?.audienceSnapshots[0] ?? null;
-  const audience = audienceRow
-    ? {
-        ageBrackets: parseAgeBrackets(audienceRow.ageBrackets),
-        genderSplit: parseGenderSplit(audienceRow.genderSplit),
-        topCities: parsePlaces(audienceRow.topCities),
-        topCountries: parsePlaces(audienceRow.topCountries),
-        takenAt: audienceRow.takenAt,
-      }
-    : null;
+  const audience = mapAudience(account?.audienceSnapshots[0] ?? null);
   const recentPosts = snapshot ? parseRecentPosts(snapshot.recentPosts) : [];
-  const previous = history.length > 1 ? history[history.length - 2] : null;
+  const deltas = computeDeltas(history);
+  const trend: TrendPoint[] = history.map((row) => ({
+    takenAt: row.takenAt,
+    engagementRate: row.engagementRate,
+    reach: row.reach,
+  }));
 
-  return { user, account, snapshot, history, previous, audience, recentPosts, profile: user.profile };
+  return {
+    user,
+    account,
+    snapshot,
+    history,
+    audience,
+    recentPosts,
+    deltas,
+    trend,
+    avgReelViews: computeAvgReelViews(recentPosts),
+    profile: user.profile,
+  };
 }
 
 export async function getPublicCredential(slug: string) {
@@ -129,7 +213,7 @@ export async function getPublicCredential(slug: string) {
         include: {
           accounts: {
             include: {
-              snapshots: { orderBy: { takenAt: "desc" }, take: 1 },
+              snapshots: { orderBy: { takenAt: "asc" } },
               audienceSnapshots: { orderBy: { takenAt: "desc" }, take: 1 },
             },
           },
@@ -145,19 +229,28 @@ export async function getPublicCredential(slug: string) {
     profile.user.accounts[0];
   if (!account) return null;
 
-  const snapshot = account.snapshots[0];
+  const history = account.snapshots;
+  const snapshot = history.length > 0 ? history[history.length - 1] : null;
   if (!snapshot) return null;
 
-  const audienceRow = account.audienceSnapshots[0] ?? null;
-  const audience = audienceRow
-    ? {
-        ageBrackets: parseAgeBrackets(audienceRow.ageBrackets),
-        genderSplit: parseGenderSplit(audienceRow.genderSplit),
-        topCities: parsePlaces(audienceRow.topCities),
-        topCountries: parsePlaces(audienceRow.topCountries),
-        takenAt: audienceRow.takenAt,
-      }
-    : null;
+  const audience = mapAudience(account.audienceSnapshots[0] ?? null);
+  const recentPosts = parseRecentPosts(snapshot.recentPosts);
+  const deltas = computeDeltas(history);
+  const trend: TrendPoint[] = history.map((row) => ({
+    takenAt: row.takenAt,
+    engagementRate: row.engagementRate,
+    reach: row.reach,
+  }));
 
-  return { profile, account, snapshot, audience };
+  return {
+    profile,
+    account,
+    snapshot,
+    history,
+    audience,
+    recentPosts,
+    deltas,
+    trend,
+    avgReelViews: computeAvgReelViews(recentPosts),
+  };
 }

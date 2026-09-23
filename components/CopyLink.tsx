@@ -4,9 +4,10 @@ import { useState } from "react";
 
 type Props = {
   url: string;
+  variant?: "full" | "compact";
 };
 
-export function CopyLink({ url }: Props) {
+export function CopyLink({ url, variant = "full" }: Props) {
   const [state, setState] = useState<"idle" | "copied" | "error">("idle");
 
   async function copy() {
@@ -17,6 +18,23 @@ export function CopyLink({ url }: Props) {
     } catch {
       setState("error");
     }
+  }
+
+  if (variant === "compact") {
+    return (
+      <div>
+        <button
+          type="button"
+          onClick={copy}
+          className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-foreground hover:border-primary"
+        >
+          {state === "copied" ? "Copied" : "Share"}
+        </button>
+        {state === "error" ? (
+          <p className="mt-1 text-xs text-destructive">Clipboard blocked. Copy {url}</p>
+        ) : null}
+      </div>
+    );
   }
 
   return (

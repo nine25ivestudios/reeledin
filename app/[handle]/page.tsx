@@ -1,11 +1,23 @@
 import { notFound } from "next/navigation";
-import { AudienceBreakdown } from "@/components/AudienceBreakdown";
 import { VerifiedCheck } from "@/components/BrandMark";
+import { CopyLink } from "@/components/CopyLink";
+import { initialsFrom } from "@/components/CredentialView";
 import { FreshnessRing } from "@/components/FreshnessRing";
 import { PageShell } from "@/components/PageShell";
-import { Stat } from "@/components/Stat";
+import { AudienceSection } from "@/components/public/AudienceSection";
+import { ContentSection } from "@/components/public/ContentSection";
+import { VerificationBand } from "@/components/public/VerificationBand";
+import { StatBar } from "@/components/Stat";
+import { TrendSection } from "@/components/TrendSection";
 import { getPublicCredential } from "@/lib/data";
-import { formatInteger, formatPercent, formatRelativeTime } from "@/lib/format";
+import { getAppUrl } from "@/lib/env";
+import {
+  AFTER_NEXT_SYNC,
+  formatInteger,
+  formatLastUpdated,
+  formatPercent,
+  isLowSample,
+} from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -22,56 +34,96 @@ export default async function PublicProfilePage({ params }: Props) {
   const data = await getPublicCredential(params.handle);
   if (!data) notFound();
 
-  const { profile, account, snapshot, audience } = data;
-  const initials = profile.displayName
-    .split(" ")
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
+  const { profile, account, snapshot, audience, recentPosts, deltas, trend, avgReelViews } = data;
+  const shareUrl = `${getAppUrl()}/${profile.slug}`;
+  const lowSample = isLowSample(snapshot.postsAnalyzed);
 
   return (
-    <PageShell showConnect={false} width="narrow">
-      <article className="rounded-2xl border border-border bg-card px-5 py-10 text-center sm:px-8">
-        <p className="inline-flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-verified">
-          <VerifiedCheck className="h-3.5 w-3.5" />
-          Verified, not self-reported
-        </p>
-        <div className="mt-6 flex justify-center">
-          <FreshnessRing
-            initials={initials || "R"}
-            lastSyncedAt={account.lastSyncedAt}
-            size={112}
-            alt={profile.displayName}
-            src={account.profilePictureUrl}
-          />
-        </div>
-        <h1 className="mt-5 font-display text-3xl font-semibold text-foreground">{profile.displayName}</h1>
-        <p className="mt-1 text-muted-foreground">
-          @{account.username}
-          {profile.niche ? ` · ${profile.niche}` : ""}
-        </p>
-        {profile.bio ? <p className="mt-4 text-left text-foreground/90">{profile.bio}</p> : null}
+    <PageShell showConnect={false} width="wide" headerNote={shareUrl.replace(/^https?:\/\//, "")}>
+      <div className="space-y-6 pt-6">
+        <section className="rounded-2xl border border-border bg-card p-5 sm:p-6">
+          <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
+            <div className="flex min-w-0 items-start gap-4">
+              <FreshnessRing
+                initials={initialsFrom(profile.displayName || account.username || "R")}
+                lastSyncedAt={account.lastSyncedAt}
+                alt={profile.displayName}
+                src={account.profilePictureUrl}
+                size={96}
+              />
+              <div className="min-w-0 pt-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="font-display text-2xl font-semibold italic tracking-tight text-foreground sm:text-3xl">
+                    {profile.displayName}
+                  </h1>
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-border px-2 py-0.5 text-xs font-medium text-verified">
+                    <VerifiedCheck className="h-3.5 w-3.5" />
+                    Verified
+                  </span>
+                </div>
+                <p className="mt-1 text-sm text-muted-foreground">@{account.username}</p>
+                {profile.bio ? <p className="mt-3 max-w-2xl text-sm text-foreground/90">{profile.bio}</p> : null}
+              </div>
+            </div>
+            <div className="flex shrink-0 flex-wrap items-center gap-2 md:flex-col md:items-end">
+              <span className="inline-flex items-center rounded-full border border-border bg-background px-3 py-1 text-xs font-medium text-muted-foreground">
+                {formatLastUpdated(account.lastSyncedAt)}
+              </span>
+              <CopyLink url={shareUrl} variant="compact" />
+            </div>
+          </div>
+        </section>
 
-        <div className="mt-8 grid grid-cols-2 gap-3 text-left">
-          <Stat label="Followers" value={formatInteger(snapshot.followersCount)} />
-          <Stat label="Engagement" value={formatPercent(snapshot.engagementRate)} />
-          <Stat label="Avg likes" value={formatInteger(Math.round(snapshot.avgLikes))} />
-          <Stat label="Avg comments" value={formatInteger(Math.round(snapshot.avgComments))} />
+        <StatBar
+          columnsClassName="lg:grid-cols-[1.35fr_1fr_1fr_1fr]"
+          items={[
+            {
+              label: "Followers",
+              value: formatInteger(snapshot.followersCount),
+              featured: true,
+              delta: deltas.followers,
+            },
+            {
+              label: "Engagement Rate",
+              value: formatPercent(snapshot.engagementRate),
+              muted: lowSample,
+              tag: lowSample ? "Low sample size" : undefined,
+              delta: deltas.engagementRate,
+            },
+            {
+              label: "Avg Reel Views",
+              value: avgReelViews === null ? null : formatInteger(Math.round(avgReelViews)),
+              emptyCaption: AFTER_NEXT_SYNC,
+              delta: deltas.avgReelViews,
+            },
+            {
+              label: "Monthly Reach",
+              value: snapshot.reach === null ? null : formatInteger(snapshot.reach),
+              emptyCaption: AFTER_NEXT_SYNC,
+              delta: deltas.monthlyReach,
+            },
+          ]}
+        />
+
+        <TrendSection history={trend} currentReach={snapshot.reach} currentEngagement={snapshot.engagementRate} />
+
+        <AudienceSection followersCount={snapshot.followersCount} audience={audience} />
+
+        <ContentSection posts={recentPosts} />
+
+        <div className="flex justify-center">
+          <a
+            href={`https://www.instagram.com/${account.username}/`}
+            target="_blank"
+            rel="noreferrer"
+            className="rounded-lg bg-primary px-6 py-3 text-sm font-medium text-white hover:bg-[#0086dd]"
+          >
+            Message on Instagram
+          </a>
         </div>
 
-        <div className="mt-6 text-left">
-          <AudienceBreakdown
-            followersCount={snapshot.followersCount}
-            audience={audience}
-            compact
-          />
-        </div>
-
-        <p className="mt-8 text-sm text-muted-foreground">
-          {formatRelativeTime(account.lastSyncedAt)} · Source: Instagram API
-        </p>
-      </article>
+        <VerificationBand lastSyncedAt={account.lastSyncedAt} />
+      </div>
     </PageShell>
   );
 }

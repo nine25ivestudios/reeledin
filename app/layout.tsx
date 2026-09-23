@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { DM_Sans, Inter } from "next/font/google";
 import { Grain } from "@/components/Grain";
 import "./globals.css";
 
@@ -7,6 +7,14 @@ const inter = Inter({
   subsets: ["latin"],
   weight: ["400", "500", "600"],
   variable: "--font-inter",
+  display: "swap",
+});
+
+const dmSans = DM_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  style: ["normal", "italic"],
+  variable: "--font-dm-sans",
   display: "swap",
 });
 
@@ -18,18 +26,19 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={inter.variable}>
+    <html lang="en" className={`${inter.variable} ${dmSans.variable}`}>
       <head>
+        {/* Windows has no flag emoji glyphs; this font covers regional-indicator pairs. */}
         <link
-          href="https://api.fontshare.com/v2/css?f[]=general-sans@500,600,700&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&display=swap"
           rel="stylesheet"
         />
       </head>
-      <body className="bg-background font-sans text-foreground antialiased">
-        <div className="pointer-events-none fixed inset-0 z-0 isolate">
+      <body className="relative bg-background font-sans text-foreground antialiased">
+        <div className="relative z-10">{children}</div>
+        <div className="pointer-events-none fixed inset-0 z-[100]" aria-hidden="true">
           <Grain />
         </div>
-        <div className="relative z-10">{children}</div>
       </body>
     </html>
   );

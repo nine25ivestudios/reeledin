@@ -11,6 +11,14 @@ export function formatDecimal(value: number, digits = 1): string {
   }).format(value);
 }
 
+export const LOW_SAMPLE_POSTS = 5;
+
+export function isLowSample(postsAnalyzed: number): boolean {
+  return postsAnalyzed > 0 && postsAnalyzed < LOW_SAMPLE_POSTS;
+}
+
+export const AFTER_NEXT_SYNC = "Available after next sync";
+
 export function formatPercent(value: number): string {
   return `${formatDecimal(value, 1)}%`;
 }
@@ -28,6 +36,61 @@ export function formatRelativeTime(date: Date | string | null | undefined): stri
   if (hours < 48) return `Synced ${hours}h ago`;
   const days = Math.floor(hours / 24);
   return `Synced ${days}d ago`;
+}
+
+export function formatLastUpdated(date: Date | string | null | undefined): string {
+  if (!date) return "last updated —";
+  const hours = hoursSinceSync(date);
+  if (hours === null) return "last updated —";
+  if (hours < 1) return "last updated just now";
+  if (hours === 1) return "last updated 1h ago";
+  if (hours < 48) return `last updated ${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `last updated ${days}d ago`;
+}
+
+export function formatPostDate(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short" }).format(date);
+}
+
+export type StatDelta = { amount: string; direction: "up" | "down" | "flat" };
+
+export function snapshotClosestToDaysAgo<T extends { takenAt: Date }>(
+  history: T[],
+  days = 30,
+  now = new Date(),
+): T | null {
+  if (history.length === 0) return null;
+  const sorted = [...history].sort((a, b) => a.takenAt.getTime() - b.takenAt.getTime());
+  const oldest = sorted[0];
+  if (now.getTime() - oldest.takenAt.getTime() < days * 24 * 60 * 60 * 1000) return null;
+  const target = now.getTime() - days * 24 * 60 * 60 * 1000;
+  return sorted.reduce((best, row) =>
+    Math.abs(row.takenAt.getTime() - target) < Math.abs(best.takenAt.getTime() - target) ? row : best,
+  );
+}
+
+export function relativePercentDelta(
+  current: number | null | undefined,
+  baseline: number | null | undefined,
+  versus = "vs last 30 days",
+): StatDelta | null {
+  if (current === null || current === undefined) return null;
+  if (baseline === null || baseline === undefined) return null;
+  if (baseline === 0) return null;
+  const pct = ((current - baseline) / baseline) * 100;
+  if (!Number.isFinite(pct)) return null;
+  if (Math.abs(pct) < 0.05) {
+    return { amount: `0.0% ${versus}`, direction: "flat" };
+  }
+  const signed = `${pct > 0 ? "+" : ""}${formatDecimal(pct, 1)}% ${versus}`;
+  return {
+    amount: signed,
+    direction: pct > 0 ? "up" : "down",
+  };
 }
 
 export function formatChartDay(date: Date): string {
