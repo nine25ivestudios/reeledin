@@ -29,6 +29,8 @@ export type FlipCardProps = {
   disabled?: boolean;
   ariaLabel?: string;
   className?: string;
+  simple?: boolean;
+  flipDuration?: number;
 };
 
 export default function FlipCard(props: FlipCardProps): JSX.Element;

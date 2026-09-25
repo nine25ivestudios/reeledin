@@ -51,7 +51,10 @@ export default function FlipCard({
   shadowOpacity = 0.45,
   disabled = false,
   ariaLabel = 'Flip card',
-  className = ''
+  className = '',
+  // Compositor-only CSS flip with no springs or pointer tracking; meant for touch devices.
+  simple = false,
+  flipDuration = 450
 }) {
   const reduce = useReducedMotion();
   const controlled = flipped !== undefined;
@@ -64,6 +67,7 @@ export default function FlipCard({
   const grip = useRef(null);
   const spin = useRef(null);
   const target = useRef(shown ? 180 : 0);
+  const lastPointerFlip = useRef(-Infinity);
 
   const turn = useMotionValue(shown ? 180 : 0);
   const tiltX = useSpring(0, TILT_SPRING);
@@ -86,7 +90,7 @@ export default function FlipCard({
   const settle = (to, velocity, instant) => {
     spin.current?.stop();
     target.current = to;
-    if (instant || reduce) turn.jump(to);
+    if (instant || reduce || simple) turn.jump(to);
     else spin.current = animate(turn, to, { type: 'spring', stiffness, damping, velocity, restDelta: 0.05 });
     const next = isBack(to);
     if (next === shownRef.current) return;
@@ -110,7 +114,7 @@ export default function FlipCard({
     const base = target.current;
     spin.current?.stop();
     target.current = isBack(base) ? base - 180 : base + 180;
-    if (reduce) turn.jump(target.current);
+    if (reduce || simple) turn.jump(target.current);
     else spin.current = animate(turn, target.current, { type: 'spring', stiffness, damping, restDelta: 0.05 });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [flipped]);
@@ -135,7 +139,7 @@ export default function FlipCard({
       slop: e.pointerType === 'touch' ? SLOP.coarse : SLOP.fine,
       hist: []
     };
-    if (!reduce) lift.set(hoverScale);
+    if (!reduce && !simple) lift.set(hoverScale);
   };
   const onPointerMove = e => {
     const g = grip.current;
@@ -157,7 +161,7 @@ export default function FlipCard({
       while (g.hist.length > 2 && now - g.hist[0].t > HISTORY_MS) g.hist.shift();
       return;
     }
-    if (!tilt || reduce || disabled || e.pointerType === 'touch') return;
+    if (!tilt || simple || reduce || disabled || e.pointerType === 'touch') return;
     const r = e.currentTarget.getBoundingClientRect();
     const px = clamp((e.clientX - r.left) / r.width, 0, 1);
     const py = clamp((e.clientY - r.top) / r.height, 0, 1);
@@ -177,7 +181,10 @@ export default function FlipCard({
     setDragging(false);
     if (e.pointerType === 'touch' || !rootRef.current?.matches(':hover')) rest();
     if (!g.moved) {
-      if (!cancelled && flipOnClick) flip(false);
+      if (!cancelled && flipOnClick) {
+        lastPointerFlip.current = performance.now();
+        flip(false);
+      }
       else settle(target.current, 0, false);
       return;
     }
@@ -196,7 +203,8 @@ export default function FlipCard({
     if (!e.repeat) flip(true);
   };
   const onClick = e => {
-    if (!disabled && e.detail === 0) flip(true);
+    // detail 0 means a keyboard click; ignore one that trails a pointer flip or the card flips twice.
+    if (!disabled && e.detail === 0 && performance.now() - lastPointerFlip.current > 400) flip(true);
   };
 
   const rotorStyle = {
@@ -205,6 +213,14 @@ export default function FlipCard({
     '--fc-gy': gyPct,
     '--fc-sheen': sheen
   };
+  // motion.div owns `transform`, so the CSS-transition flip lives on a plain inner element.
+  const simpleStyle = simple && !reduce
+    ? {
+        transform: `perspective(${perspective}px) rotate${axis === 'x' ? 'X' : 'Y'}(${target.current}deg)`,
+        transition: `transform ${flipDuration}ms cubic-bezier(0.33, 1, 0.68, 1)`,
+        willChange: 'transform'
+      }
+    : undefined;
 
   return (
     <div
@@ -226,7 +242,7 @@ export default function FlipCard({
       onPointerCancel={e => release(e, true)}
       onLostPointerCapture={e => release(e, true)}
       onPointerEnter={e => {
-        if (!reduce && !disabled && e.pointerType !== 'touch') lift.set(hoverScale);
+        if (!reduce && !simple && !disabled && e.pointerType !== 'touch') lift.set(hoverScale);
       }}
       onPointerLeave={() => {
         if (!grip.current) rest();
@@ -252,14 +268,16 @@ export default function FlipCard({
           style={axis === 'x' ? { scaleY: spread, opacity: shade } : { scaleX: spread, opacity: shade }}
         />
       ) : null}
-      <motion.div className="flip-card__rotor" style={reduce ? undefined : rotorStyle}>
-        <div className="flip-card__face flip-card__face--front" aria-hidden={shown} inert={shown ? '' : undefined}>
-          {front}
-          {glare ? <span className="flip-card__glare" aria-hidden="true" /> : null}
-        </div>
-        <div className="flip-card__face flip-card__face--back" aria-hidden={!shown} inert={!shown ? '' : undefined}>
-          {back}
-          {glare ? <span className="flip-card__glare" aria-hidden="true" /> : null}
+      <motion.div className="flip-card__rotor" style={reduce || simple ? undefined : rotorStyle}>
+        <div className="flip-card__rotor" style={simpleStyle}>
+          <div className="flip-card__face flip-card__face--front" aria-hidden={shown} inert={shown ? '' : undefined}>
+            {front}
+            {glare ? <span className="flip-card__glare" aria-hidden="true" /> : null}
+          </div>
+          <div className="flip-card__face flip-card__face--back" aria-hidden={!shown} inert={!shown ? '' : undefined}>
+            {back}
+            {glare ? <span className="flip-card__glare" aria-hidden="true" /> : null}
+          </div>
         </div>
       </motion.div>
     </div>

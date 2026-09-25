@@ -86,6 +86,19 @@ body {
   animation: rotating-line-in 0.45s ease-out both;
 }
 
+/* Percentage width keeps the card out of grid min-content sizing; 448px is the desktop card width. */
+.flip-card.sample-flip {
+  width: 100%;
+  max-width: 448px;
+}
+
+/* Faces are absolutely positioned, so the card can't grow when a line wraps on very narrow phones. */
+@media (max-width: 359px) {
+  .flip-card.sample-flip {
+    height: 340px;
+  }
+}
+
 .flag {
   font-family: "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
 }

@@ -1,11 +1,26 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import FlipCard from "./FlipCard";
+
+const TOUCH_QUERY = "(hover: none) and (pointer: coarse)";
 
 /** The flip card captures the pointer on press and flips on keyboard clicks; the link must opt out of both. */
 function stop(event: React.SyntheticEvent) {
   event.stopPropagation();
+}
+
+function useIsTouch() {
+  const [touch, setTouch] = useState(false);
+  useEffect(() => {
+    const query = window.matchMedia(TOUCH_QUERY);
+    const update = () => setTouch(query.matches);
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
+  return touch;
 }
 
 export function SampleFlipCard({
@@ -19,6 +34,8 @@ export function SampleFlipCard({
   href: string;
   height: number;
 }) {
+  const touch = useIsTouch();
+
   return (
     <FlipCard
       front={front}
@@ -32,19 +49,22 @@ export function SampleFlipCard({
             onClick={stop}
             className="mt-5 rounded-lg bg-primary px-5 py-3 font-medium text-white hover:bg-[#0086dd]"
           >
-            See {firstName}&apos;s full profile
+            See {firstName}&apos;s full profile →
           </Link>
           <p className="mt-5 text-xs text-muted-foreground">Tap the card to flip back</p>
         </div>
       }
       axis="y"
       flipOnClick
-      draggable
-      tilt
+      simple={touch}
+      flipDuration={450}
+      draggable={!touch}
+      tilt={!touch}
       tiltMax={6}
-      hoverScale={1.015}
-      glare
+      hoverScale={touch ? 1 : 1.015}
+      glare={!touch}
       glareOpacity={0.06}
+      shadow={!touch}
       width={448}
       height={height}
       radius={16}
@@ -52,7 +72,7 @@ export function SampleFlipCard({
       color="var(--foreground)"
       shadowOpacity={0.5}
       ariaLabel={`Sample profile for ${firstName}. Press to flip.`}
-      className="align-top"
+      className="sample-flip align-top"
     />
   );
 }
