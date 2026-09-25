@@ -176,11 +176,12 @@ export function computeDeltas(
   };
 }
 
-/** The one path from stored snapshots to what the public profile renders. */
+/** The one path from stored snapshots to what the public profile and dashboard render. */
 export function buildPublicProfileView(input: {
   slug: string;
-  displayName: string;
-  bio: string | null;
+  /** Instagram profile name and bio as last synced; null when Instagram returns none. */
+  name: string | null;
+  biography: string | null;
   username: string;
   profilePictureUrl: string | null;
   lastSyncedAt: Date | null;
@@ -193,8 +194,8 @@ export function buildPublicProfileView(input: {
   const recentPosts = parseRecentPosts(snapshot.recentPosts);
   return {
     slug: input.slug,
-    displayName: input.displayName,
-    bio: input.bio,
+    displayName: input.name || input.username,
+    bio: input.biography,
     username: input.username,
     profilePictureUrl: input.profilePictureUrl,
     lastSyncedAt: input.lastSyncedAt,

@@ -192,8 +192,8 @@ export function getDemoProfile(now = new Date()): PublicProfileView {
 
   return buildPublicProfileView({
     slug: DEMO_SLUG,
-    displayName: "Maya Kapadia",
-    bio: "Food and slow travel from Mumbai. Street eats, weekend trips and recipes from home.",
+    name: "Maya Kapadia",
+    biography: "Food and slow travel from Mumbai. Street eats, weekend trips and recipes from home.",
     username: "maya.kapadia",
     profilePictureUrl: null,
     lastSyncedAt,

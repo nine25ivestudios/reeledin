@@ -119,6 +119,8 @@ export async function syncAccount(accountId: string, options?: { forceAudience?:
           username: profile.username,
           accountType: profile.accountType,
           profilePictureUrl: profile.profilePictureUrl ?? null,
+          name: profile.name,
+          biography: profile.biography,
           lastSyncedAt: new Date(),
           lastSyncError: audienceError,
         },

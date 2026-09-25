@@ -3,7 +3,8 @@ import { PublicProfile } from "@/components/public/PublicProfile";
 import { getDemoProfile, DEMO_SLUG } from "@/lib/demo-data";
 import { getAppUrl } from "@/lib/env";
 
-export const dynamic = "force-dynamic";
+// Demo timestamps are hour-rounded, so a 30-minute cache keeps "Synced 1h ago" honest and lets <Link> prefetch the full page.
+export const revalidate = 1800;
 
 export const metadata = {
   title: "Sample profile — Reeledin",

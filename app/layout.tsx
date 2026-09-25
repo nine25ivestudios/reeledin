@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { DM_Sans, Inter } from "next/font/google";
+import { DM_Sans, Inter, Noto_Color_Emoji } from "next/font/google";
 import { Grain } from "@/components/Grain";
 import "./globals.css";
 
@@ -18,6 +18,15 @@ const dmSans = DM_Sans({
   display: "swap",
 });
 
+/* Windows has no flag emoji glyphs; this covers regional-indicator pairs. Not preloaded: only fetched when a flag renders. */
+const emoji = Noto_Color_Emoji({
+  weight: "400",
+  subsets: ["emoji"],
+  variable: "--font-emoji",
+  display: "swap",
+  preload: false,
+});
+
 export const metadata: Metadata = {
   title: "Reeledin — verified Instagram stats for creators",
   description:
@@ -26,17 +35,10 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} ${dmSans.variable}`}>
-      <head>
-        {/* Windows has no flag emoji glyphs; this font covers regional-indicator pairs. */}
-        <link
-          href="https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&display=swap"
-          rel="stylesheet"
-        />
-      </head>
+    <html lang="en" className={`${inter.variable} ${dmSans.variable} ${emoji.variable}`}>
       <body className="relative bg-background font-sans text-foreground antialiased">
         <div className="relative z-10">{children}</div>
-        <div className="pointer-events-none fixed inset-0 z-[100]" aria-hidden="true">
+        <div className="grain-layer pointer-events-none fixed inset-0 z-[100]" aria-hidden="true">
           <Grain />
         </div>
       </body>

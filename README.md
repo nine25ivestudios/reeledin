@@ -25,9 +25,8 @@ app/
   api/auth/instagram/callback/      finish OAuth
   api/auth/logout/route.ts
   api/sync/route.ts                 session sync or cron bulk
-  api/profile/route.ts
   api/data-deletion/route.ts        Meta callback
-components/                         UI (FreshnessRing, GrowthChart, AudienceBreakdown, …)
+components/                         UI (PublicProfile, FreshnessRing, Stat, TrendSection, …)
 lib/                                prisma, session, crypto, instagram, sync, freshness
 prisma/schema.prisma                User, ConnectedAccount, StatsSnapshot, AudienceSnapshot, Profile
 ```
@@ -134,13 +133,12 @@ Manual **Sync now** uses the session cookie and only that creator’s account.
 | Path | Purpose |
 | --- | --- |
 | `/` | Marketing (demo recently-verified + leaderboard) |
-| `/dashboard` | Private stats, growth, audience, sync, profile, share link |
+| `/dashboard` | Same profile brands see, plus sync, public-link toggle, sign out |
 | `/{handle}` | Public credential |
 | `/privacy` | Privacy policy (App Review) |
 | `/api/auth/instagram` | Start OAuth |
 | `/api/auth/instagram/callback` | Finish OAuth |
 | `/api/sync` | Manual or cron sync |
-| `/api/profile` | Save profile copy |
 | `/api/data-deletion` | Meta deletion callback |
 | `/deletion-status` | Deletion confirmation page |
 

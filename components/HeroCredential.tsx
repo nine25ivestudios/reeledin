@@ -1,8 +1,7 @@
 import { getDemoProfile } from "@/lib/demo-data";
-import { formatRelativeTime } from "@/lib/format";
+import { formatRelativeTime, initialsFrom } from "@/lib/format";
 import { VerifiedCheck } from "./BrandMark";
 import { CountUp } from "./CountUp";
-import { initialsFrom } from "./CredentialView";
 import { FreshnessRing } from "./FreshnessRing";
 import { SampleFlipCard } from "./SampleFlipCard";
 
@@ -70,7 +69,7 @@ export function HeroCredential() {
   return (
     <div className="relative z-0 mx-auto w-full max-w-md overflow-visible lg:mx-0 lg:justify-self-end">
       <div
-        className="pointer-events-none absolute left-1/2 top-1/2 z-0 h-[min(560px,100vw)] w-[min(560px,100vw)] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-20 blur-[100px]"
+        className="hero-glow pointer-events-none absolute left-1/2 top-1/2 z-0 h-[min(560px,100vw)] w-[min(560px,100vw)] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-20 blur-[100px]"
         style={{
           background:
             "conic-gradient(from 180deg, #405DE6, #5B51D8, #833AB4, #C13584, #E1306C, #FD1D1D, #F56040, #F77737, #FCAF45, #FFDC80, #405DE6)",

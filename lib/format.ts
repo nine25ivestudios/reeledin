@@ -19,6 +19,15 @@ export function isLowSample(postsAnalyzed: number): boolean {
 
 export const AFTER_NEXT_SYNC = "Available after next sync";
 
+export function initialsFrom(name: string) {
+  return name
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
+
 export function formatPercent(value: number): string {
   return `${formatDecimal(value, 1)}%`;
 }

@@ -60,14 +60,15 @@ body {
 @keyframes freshness-pulse {
   0%,
   100% {
-    filter: grayscale(var(--gray, 0%)) saturate(1) brightness(1);
+    opacity: 0;
   }
   50% {
-    filter: grayscale(var(--gray, 0%)) saturate(1.28) brightness(1.12);
+    opacity: 1;
   }
 }
 
 .freshness-pulse {
+  opacity: 0;
   animation: freshness-pulse 3.5s ease-in-out infinite;
 }
 
@@ -100,7 +101,45 @@ body {
 }
 
 .flag {
-  font-family: "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
+  font-family: var(--font-emoji), "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
+}
+
+a,
+button {
+  touch-action: manipulation;
+}
+
+/*
+ * Touch devices: drop effects that cost GPU/raster work on every scroll frame.
+ * Grain is a full-viewport SVG noise filter blended over the whole page; the header re-blurs
+ * everything under it while scrolling; the hero glow is a 100px blur. None carry information.
+ */
+@media (hover: none) and (pointer: coarse) {
+  .grain-layer {
+    display: none;
+  }
+
+  .site-header {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background-color: rgba(0, 0, 0, 0.92);
+  }
+
+  .hero-glow {
+    filter: none;
+    -webkit-mask-image: radial-gradient(closest-side, #000 15%, transparent 100%);
+    mask-image: radial-gradient(closest-side, #000 15%, transparent 100%);
+  }
+
+  a:active,
+  button:active {
+    opacity: 0.85;
+  }
+
+  /* iOS has native flag glyphs; putting them first skips the webfont download there. */
+  .flag {
+    font-family: "Apple Color Emoji", var(--font-emoji), "Segoe UI Emoji", sans-serif;
+  }
 }
 
 .loc-panel[data-active="false"],

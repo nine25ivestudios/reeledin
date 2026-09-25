@@ -32,6 +32,9 @@ model ConnectedAccount {
   lastSyncedAt   DateTime?
   lastSyncError  String?
   profilePictureUrl String?
+  // Instagram profile name and bio. Written only by connect/sync, never by a user-facing form.
+  name              String?
+  biography         String?
 
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   snapshots         StatsSnapshot[]
@@ -77,12 +80,9 @@ model AudienceSnapshot {
 model Profile {
   id          String   @id @default(cuid())
   userId      String   @unique
-  slug        String   @unique
-  displayName String
-  niche       String   @default("")
-  bio         String   @default("")
-  isPublic    Boolean  @default(true)
-  updatedAt   DateTime @updatedAt
+  slug      String   @unique
+  isPublic  Boolean  @default(true)
+  updatedAt DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

@@ -20,7 +20,8 @@ export default function PrivacyPage() {
             only for the authenticated account, and only at or above 100 followers.
           </li>
           <li>A long-lived Instagram access token, AES-encrypted at rest.</li>
-          <li>Optional profile copy you type: display name, niche, bio, public/private.</li>
+          <li>Your Instagram profile name and bio, refreshed from Instagram on every sync.</li>
+          <li>Whether your public link is visible.</li>
         </ul>
         <h2 className="mt-8 font-display text-xl text-foreground">How we use it</h2>
         <p className="mt-3 text-muted-foreground">

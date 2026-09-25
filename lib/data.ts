@@ -1,15 +1,8 @@
+import type { AudienceSnapshot, ConnectedAccount, StatsSnapshot } from "@prisma/client";
 import { cookies } from "next/headers";
 import { prisma } from "./prisma";
 import { getSessionUserId } from "./session";
-import { computeAvgReelViews } from "./instagram";
-import {
-  buildPublicProfileView,
-  computeDeltas,
-  mapAudience,
-  parseRecentPosts,
-  type PublicProfileView,
-  type TrendPoint,
-} from "./profile-view";
+import { buildPublicProfileView, type PublicProfileView } from "./profile-view";
 
 export type {
   AgeBrackets,
@@ -22,6 +15,35 @@ export type {
 } from "./profile-view";
 export { parseAgeBrackets, parseGenderSplit, parsePlaces, parseRecentPosts } from "./profile-view";
 
+type AccountWithHistory = ConnectedAccount & {
+  snapshots: StatsSnapshot[];
+  audienceSnapshots: AudienceSnapshot[];
+};
+
+const accountInclude = {
+  snapshots: { orderBy: { takenAt: "asc" } },
+  audienceSnapshots: { orderBy: { takenAt: "desc" }, take: 1 },
+} as const;
+
+function primaryAccount<T extends { platform: string }>(accounts: T[]): T | null {
+  return accounts.find((a) => a.platform === "instagram") ?? accounts[0] ?? null;
+}
+
+/** Dashboard and public page both render through here, so name and bio can only come from the synced account. */
+function viewFromAccount(slug: string, account: AccountWithHistory): PublicProfileView | null {
+  if (account.snapshots.length === 0) return null;
+  return buildPublicProfileView({
+    slug,
+    name: account.name,
+    biography: account.biography,
+    username: account.username,
+    profilePictureUrl: account.profilePictureUrl,
+    lastSyncedAt: account.lastSyncedAt,
+    history: account.snapshots,
+    audience: account.audienceSnapshots[0] ?? null,
+  });
+}
+
 export async function getDashboardData() {
   const userId = await getSessionUserId();
   if (!userId) return null;
@@ -30,15 +52,7 @@ export async function getDashboardData() {
   try {
     user = await prisma.user.findUnique({
       where: { id: userId },
-      include: {
-        profile: true,
-        accounts: {
-          include: {
-            snapshots: { orderBy: { takenAt: "asc" } },
-            audienceSnapshots: { orderBy: { takenAt: "desc" }, take: 1 },
-          },
-        },
-      },
+      include: { profile: true, accounts: { include: accountInclude } },
     });
   } catch (error) {
     throw new Error(
@@ -53,65 +67,21 @@ export async function getDashboardData() {
     return null;
   }
 
-  const account = user.accounts.find((a) => a.platform === "instagram") ?? user.accounts[0] ?? null;
-  const history = account?.snapshots ?? [];
-  const snapshot = history.length > 0 ? history[history.length - 1] : null;
-  const audience = mapAudience(account?.audienceSnapshots[0] ?? null);
-  const recentPosts = snapshot ? parseRecentPosts(snapshot.recentPosts) : [];
-  const deltas = computeDeltas(history);
-  const trend: TrendPoint[] = history.map((row) => ({
-    takenAt: row.takenAt,
-    engagementRate: row.engagementRate,
-    reach: row.reach,
-  }));
+  const account = primaryAccount(user.accounts);
+  const profile = user.profile;
+  const view = account && profile ? viewFromAccount(profile.slug, account) : null;
 
-  return {
-    user,
-    account,
-    snapshot,
-    history,
-    audience,
-    recentPosts,
-    deltas,
-    trend,
-    avgReelViews: computeAvgReelViews(recentPosts),
-    profile: user.profile,
-  };
+  return { account, profile, view };
 }
 
 export async function getPublicCredential(slug: string): Promise<PublicProfileView | null> {
   const profile = await prisma.profile.findUnique({
     where: { slug: slug.toLowerCase() },
-    include: {
-      user: {
-        include: {
-          accounts: {
-            include: {
-              snapshots: { orderBy: { takenAt: "asc" } },
-              audienceSnapshots: { orderBy: { takenAt: "desc" }, take: 1 },
-            },
-          },
-        },
-      },
-    },
+    include: { user: { include: { accounts: { include: accountInclude } } } },
   });
 
   if (!profile || !profile.isPublic) return null;
 
-  const account =
-    profile.user.accounts.find((item) => item.platform === "instagram") ??
-    profile.user.accounts[0];
-  if (!account) return null;
-  if (account.snapshots.length === 0) return null;
-
-  return buildPublicProfileView({
-    slug: profile.slug,
-    displayName: profile.displayName,
-    bio: profile.bio,
-    username: account.username,
-    profilePictureUrl: account.profilePictureUrl,
-    lastSyncedAt: account.lastSyncedAt,
-    history: account.snapshots,
-    audience: account.audienceSnapshots[0] ?? null,
-  });
+  const account = primaryAccount(profile.user.accounts);
+  return account ? viewFromAccount(profile.slug, account) : null;
 }

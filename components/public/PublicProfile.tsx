@@ -1,10 +1,16 @@
 import { VerifiedCheck } from "@/components/BrandMark";
 import { CopyLink } from "@/components/CopyLink";
-import { initialsFrom } from "@/components/CredentialView";
 import { FreshnessRing } from "@/components/FreshnessRing";
 import { StatBar } from "@/components/Stat";
 import { TrendSection } from "@/components/TrendSection";
-import { AFTER_NEXT_SYNC, formatInteger, formatLastUpdated, formatPercent, isLowSample } from "@/lib/format";
+import {
+  AFTER_NEXT_SYNC,
+  formatInteger,
+  formatLastUpdated,
+  formatPercent,
+  initialsFrom,
+  isLowSample,
+} from "@/lib/format";
 import type { PublicProfileView } from "@/lib/profile-view";
 import { AudienceSection } from "./AudienceSection";
 import { ContentSection } from "./ContentSection";
@@ -12,7 +18,8 @@ import { VerificationBand } from "./VerificationBand";
 
 type Props = {
   profile: PublicProfileView;
-  shareUrl: string;
+  /** Null hides the Share button (the dashboard, while the link is private). */
+  shareUrl: string | null;
   /** Null disables outbound Instagram links (used by the sample profile). */
   instagramUrl: string | null;
   /** Use a lower heading level when the profile is embedded inside another page. */
@@ -53,7 +60,7 @@ export function PublicProfile({ profile, shareUrl, instagramUrl, nameAs = "h1" }
             <span className="inline-flex items-center rounded-full border border-border bg-background px-3 py-1 text-xs font-medium text-muted-foreground">
               {formatLastUpdated(profile.lastSyncedAt)}
             </span>
-            <CopyLink url={shareUrl} variant="compact" />
+            {shareUrl ? <CopyLink url={shareUrl} variant="compact" /> : null}
           </div>
         </div>
       </section>

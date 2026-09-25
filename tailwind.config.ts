@@ -5,6 +5,10 @@ const config: Config = {
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
   ],
+  future: {
+    // hover: styles only under (hover: hover), so taps on touch screens don't trigger sticky hover transitions.
+    hoverOnlyWhenSupported: true,
+  },
   theme: {
     extend: {
       colors: {

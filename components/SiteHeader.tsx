@@ -8,7 +8,7 @@ type Props = {
 
 export function SiteHeader({ showConnect = true, note }: Props) {
   return (
-    <header className="sticky top-0 z-30 -mx-5 mb-2 border-b border-border bg-background/85 px-5 backdrop-blur">
+    <header className="site-header sticky top-0 z-30 -mx-5 mb-2 border-b border-border bg-background/85 px-5 backdrop-blur">
       <div className="flex items-center justify-between gap-4 py-4">
         <Link href="/" className="flex items-center gap-2.5 font-display text-lg font-semibold tracking-tight text-foreground">
           <BrandMark />

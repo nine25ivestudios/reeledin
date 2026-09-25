@@ -51,7 +51,8 @@ export type InstagramProfile = {
   accountType: string;
   followersCount: number;
   mediaCount: number;
-  name?: string;
+  name: string | null;
+  biography: string | null;
   profilePictureUrl?: string | null;
 };
 
@@ -236,32 +237,44 @@ export async function refreshLongLivedToken(token: string): Promise<{
   return { accessToken: body.access_token, expiresIn: body.expires_in };
 }
 
-export async function fetchInstagramProfile(accessToken: string): Promise<InstagramProfile> {
-  // Instagram Login /me fields: id, user_id, username, name, account_type,
-  // profile_picture_url, followers_count, follows_count, media_count.
-  // `category` is not on this path — do not request or invent niche tags.
-  const params = new URLSearchParams({
-    fields: "id,username,account_type,followers_count,media_count,name,profile_picture_url",
-    access_token: accessToken,
-  });
+type ProfileResponse = {
+  id?: string;
+  username?: string;
+  account_type?: string;
+  followers_count?: number;
+  media_count?: number;
+  name?: string;
+  biography?: string;
+  profile_picture_url?: string;
+  error?: { message?: string };
+};
 
+const PROFILE_FIELDS = "id,username,account_type,followers_count,media_count,name,profile_picture_url";
+
+async function requestProfile(accessToken: string, fields: string) {
+  const params = new URLSearchParams({ fields, access_token: accessToken });
   let res: Response;
   try {
     res = await fetch(`https://graph.instagram.com/me?${params.toString()}`);
   } catch {
     throw new InstagramApiError("Could not reach Instagram to load your profile.");
   }
+  return { res, body: await readJson<ProfileResponse>(res, "Instagram rejected the profile request.") };
+}
 
-  const body = await readJson<{
-    id?: string;
-    username?: string;
-    account_type?: string;
-    followers_count?: number;
-    media_count?: number;
-    name?: string;
-    profile_picture_url?: string;
-    error?: { message?: string };
-  }>(res, "Instagram rejected the profile request.");
+function cleanText(value: string | undefined): string | null {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+}
+
+export async function fetchInstagramProfile(accessToken: string): Promise<InstagramProfile> {
+  // Documented Instagram Login /me fields: id, user_id, username, name, account_type,
+  // profile_picture_url, followers_count, follows_count, media_count.
+  // `biography` is returned on this path but only documented for Facebook Login, so it is
+  // optional: if Instagram rejects it, retry without it rather than failing the sync.
+  // `category` is not on this path — do not request or invent niche tags.
+  let { res, body } = await requestProfile(accessToken, `${PROFILE_FIELDS},biography`);
+  if (!res.ok) ({ res, body } = await requestProfile(accessToken, PROFILE_FIELDS));
 
   if (!res.ok || !body.id || !body.username) {
     throw new InstagramApiError(
@@ -283,7 +296,8 @@ export async function fetchInstagramProfile(accessToken: string): Promise<Instag
     accountType,
     followersCount: body.followers_count ?? 0,
     mediaCount: body.media_count ?? 0,
-    name: body.name,
+    name: cleanText(body.name),
+    biography: cleanText(body.biography),
     profilePictureUrl: body.profile_picture_url ?? null,
   };
 }

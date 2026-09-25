@@ -57,6 +57,8 @@ export async function connectFromAuthorizationCode(code: string) {
       lastSyncedAt: new Date(),
       lastSyncError: null,
       profilePictureUrl: ig.profilePictureUrl ?? null,
+      name: ig.name,
+      biography: ig.biography,
     },
     update: {
       username: ig.username,
@@ -66,6 +68,8 @@ export async function connectFromAuthorizationCode(code: string) {
       lastSyncedAt: new Date(),
       lastSyncError: null,
       profilePictureUrl: ig.profilePictureUrl ?? null,
+      name: ig.name,
+      biography: ig.biography,
     },
   });
 
@@ -101,15 +105,10 @@ export async function connectFromAuthorizationCode(code: string) {
   }
 
   const slug = await uniqueSlug(ig.username, user.id);
-  const displayName = ig.name || ig.username;
 
   await prisma.profile.upsert({
     where: { userId: user.id },
-    create: {
-      userId: user.id,
-      slug,
-      displayName,
-    },
+    create: { userId: user.id, slug },
     update: {},
   });
 
