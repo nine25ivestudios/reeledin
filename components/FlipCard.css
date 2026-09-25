@@ -53,15 +53,34 @@
   position: absolute;
   inset: 0;
   transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
 }
 
 .flip-card__face {
   position: absolute;
   inset: 0;
-  overflow: hidden;
   border-radius: var(--fc-radius);
   background: var(--fc-bg);
   color: var(--fc-ink);
+  /* overflow:hidden on this plane disables backface-visibility in WebKit. Clip on .flip-card__clip. */
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
+}
+
+.flip-card__clip {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  background: var(--fc-bg);
+}
+
+/* Filter and opacity animations on descendants (e.g. the freshness ring) promote their own
+   compositor layers; they must inherit the face's culling or they paint through the other side. */
+.flip-card__face,
+.flip-card__face * {
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
 }
@@ -70,12 +89,22 @@
   -webkit-user-drag: none;
 }
 
+/* translateZ keeps the two planes from occupying the same depth, which is what lets WebKit
+   composite a front-face child on top of the back. */
+.flip-card__face--front {
+  transform: rotateY(0deg) translateZ(1px);
+}
+
 .flip-card__face--back {
-  transform: rotateY(180deg);
+  transform: rotateY(180deg) translateZ(1px);
+}
+
+.flip-card[data-axis='x'] .flip-card__face--front {
+  transform: rotateX(0deg) translateZ(1px);
 }
 
 .flip-card[data-axis='x'] .flip-card__face--back {
-  transform: rotateX(180deg);
+  transform: rotateX(180deg) translateZ(1px);
 }
 
 .flip-card__glare {
@@ -93,6 +122,20 @@
   );
   opacity: var(--fc-sheen, 0);
   pointer-events: none;
+}
+
+/* Simple (touch) flip: hide the turned-away face at 90°. Opacity is required because
+   visibility does not cull filter/opacity compositor layers on iOS WebKit. */
+.flip-card[data-simple] .flip-card__face {
+  transition:
+    visibility 0s linear var(--fc-swap, 93ms),
+    opacity 0s linear var(--fc-swap, 93ms);
+}
+
+.flip-card[data-simple][aria-pressed='true'] .flip-card__face--front,
+.flip-card[data-simple][aria-pressed='false'] .flip-card__face--back {
+  visibility: hidden;
+  opacity: 0;
 }
 
 .flip-card[data-fade] .flip-card__face {

@@ -10,18 +10,8 @@ import {
   postsForSnapshot,
 } from "./instagram";
 import { prisma } from "./prisma";
-import { slugFromUsername, slugWithSuffix } from "./slug";
+import { uniqueSlug } from "./slug";
 import { recordDailyInsights } from "./sync";
-
-async function uniqueSlug(username: string, userId: string): Promise<string> {
-  const base = slugFromUsername(username);
-  for (let attempt = 0; attempt < 50; attempt += 1) {
-    const slug = slugWithSuffix(base, attempt);
-    const existing = await prisma.profile.findUnique({ where: { slug } });
-    if (!existing || existing.userId === userId) return slug;
-  }
-  return `${base}${Date.now().toString(36)}`;
-}
 
 export async function connectFromAuthorizationCode(code: string) {
   const shortLived = await exchangeCodeForShortLivedToken(code);
@@ -116,7 +106,7 @@ export async function connectFromAuthorizationCode(code: string) {
   await prisma.profile.upsert({
     where: { userId: user.id },
     create: { userId: user.id, slug },
-    update: {},
+    update: { slug },
   });
 
   return { userId: user.id };

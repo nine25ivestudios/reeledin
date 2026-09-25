@@ -16,6 +16,7 @@ import {
   postsForSnapshot,
   refreshLongLivedToken,
 } from "./instagram";
+import { uniqueSlug } from "./slug";
 
 const REFRESH_IF_EXPIRES_WITHIN_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -166,6 +167,16 @@ export async function syncAccount(accountId: string, options?: { forceAudience?:
         },
       }),
     ]);
+
+    try {
+      const slug = await uniqueSlug(profile.username, account.userId);
+      await prisma.profile.update({
+        where: { userId: account.userId },
+        data: { slug },
+      });
+    } catch {
+      // Connect writes the profile; stats above already landed if this update misses.
+    }
 
     try {
       await recordDailyInsights(account.id, profile.id, token, profile.followersCount);

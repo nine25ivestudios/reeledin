@@ -19,7 +19,12 @@ const LIFT_SPRING = { stiffness: 320, damping: 26 };
 const FLING = 0.16;
 const HISTORY_MS = 90;
 
+const SIMPLE_EASE = 'cubic-bezier(0.33, 1, 0.68, 1)';
+// Fraction of the simple flip's duration at which SIMPLE_EASE reaches 90°, where faces swap.
+const SIMPLE_EASE_HALFWAY = 0.206;
+
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+const facesViewer = deg => Math.cos((deg * Math.PI) / 180) >= 0;
 const snap = deg => Math.round(deg / 180) * 180;
 const isBack = deg => Math.abs(Math.round(deg / 180)) % 2 === 1;
 
@@ -81,6 +86,14 @@ export default function FlipCard({
   const sumY = useTransform([turn, tiltY], ([t, y]) => t + y);
   const turnY = useMotionTemplate`perspective(${perspective}px) scale(${lift}) rotateX(${tiltX}deg) rotateY(${sumY}deg)`;
   const turnX = useMotionTemplate`perspective(${perspective}px) scale(${lift}) rotateY(${tiltY}deg) rotateX(${sumX}deg)`;
+  // backface-visibility alone is not trusted: engines may composite a face's descendants on
+  // their own layers and skip the culling, so the turned-away face also leaves the render tree.
+  const angle = axis === 'x' ? sumX : sumY;
+  // visibility alone does not cull filter/opacity compositor layers on iOS; opacity does.
+  const frontVisibility = useTransform(angle, t => (facesViewer(t) ? 'visible' : 'hidden'));
+  const backVisibility = useTransform(angle, t => (facesViewer(t) ? 'hidden' : 'visible'));
+  const frontOpacity = useTransform(angle, t => (facesViewer(t) ? 1 : 0));
+  const backOpacity = useTransform(angle, t => (facesViewer(t) ? 0 : 1));
   const facing = useTransform(turn, t => Math.abs(Math.cos((t * Math.PI) / 180)));
   const spread = useTransform(facing, f => 0.08 + 0.92 * f);
   const shade = useTransform(facing, f => 0.1 + 0.9 * f * f);
@@ -217,10 +230,14 @@ export default function FlipCard({
   const simpleStyle = simple && !reduce
     ? {
         transform: `perspective(${perspective}px) rotate${axis === 'x' ? 'X' : 'Y'}(${target.current}deg)`,
-        transition: `transform ${flipDuration}ms cubic-bezier(0.33, 1, 0.68, 1)`,
+        transition: `transform ${flipDuration}ms ${SIMPLE_EASE}`,
         willChange: 'transform'
       }
     : undefined;
+  const swapMs = Math.round(flipDuration * SIMPLE_EASE_HALFWAY);
+  const frontStyle = reduce || simple ? undefined : { visibility: frontVisibility, opacity: frontOpacity };
+  const backStyle = reduce || simple ? undefined : { visibility: backVisibility, opacity: backOpacity };
+  const Face = reduce || simple ? 'div' : motion.div;
 
   return (
     <div
@@ -235,6 +252,7 @@ export default function FlipCard({
       data-draggable={draggable && !disabled && !reduce ? '' : undefined}
       data-dragging={dragging ? '' : undefined}
       data-disabled={disabled ? '' : undefined}
+      data-simple={simple && !reduce ? '' : undefined}
       data-fade={reduce ? (shown ? 'back' : 'front') : undefined}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
@@ -258,7 +276,8 @@ export default function FlipCard({
         '--fc-ink': color,
         '--fc-shadow': shadowColor,
         '--fc-shadow-o': shadowOpacity,
-        '--fc-glare': glareOpacity
+        '--fc-glare': glareOpacity,
+        '--fc-swap': `${swapMs}ms`
       }}
     >
       {shadow ? (
@@ -270,14 +289,28 @@ export default function FlipCard({
       ) : null}
       <motion.div className="flip-card__rotor" style={reduce || simple ? undefined : rotorStyle}>
         <div className="flip-card__rotor" style={simpleStyle}>
-          <div className="flip-card__face flip-card__face--front" aria-hidden={shown} inert={shown ? '' : undefined}>
-            {front}
-            {glare ? <span className="flip-card__glare" aria-hidden="true" /> : null}
-          </div>
-          <div className="flip-card__face flip-card__face--back" aria-hidden={!shown} inert={!shown ? '' : undefined}>
-            {back}
-            {glare ? <span className="flip-card__glare" aria-hidden="true" /> : null}
-          </div>
+          <Face
+            className="flip-card__face flip-card__face--front"
+            style={frontStyle}
+            aria-hidden={shown}
+            inert={shown ? '' : undefined}
+          >
+            <div className="flip-card__clip">
+              {front}
+              {glare ? <span className="flip-card__glare" aria-hidden="true" /> : null}
+            </div>
+          </Face>
+          <Face
+            className="flip-card__face flip-card__face--back"
+            style={backStyle}
+            aria-hidden={!shown}
+            inert={!shown ? '' : undefined}
+          >
+            <div className="flip-card__clip">
+              {back}
+              {glare ? <span className="flip-card__glare" aria-hidden="true" /> : null}
+            </div>
+          </Face>
         </div>
       </motion.div>
     </div>
