@@ -17,10 +17,10 @@ export default function DemoProfilePage() {
   const shareUrl = `${getAppUrl()}/${DEMO_SLUG}`;
 
   return (
-    <PageShell showConnect width="wide" headerNote={shareUrl.replace(/^https?:\/\//, "")}>
+    <PageShell showConnect width="profile" headerNote={shareUrl.replace(/^https?:\/\//, "")}>
       <div className="pt-6">
         <div className="mb-4 flex flex-col gap-1 rounded-xl border border-dashed border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-foreground">Sample profile</p>
+          <p className="text-xs font-semibold uppercase text-foreground">Sample profile</p>
           <p className="text-xs text-muted-foreground">
             For demonstration purposes. Fictional creator, fictional numbers.
           </p>

@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { BrandPreview } from "@/components/landing/BrandPreview";
+import { Faq } from "@/components/landing/Faq";
 import { HeroCredential } from "@/components/HeroCredential";
-import { NoMoreScreenshots } from "@/components/NoMoreScreenshots";
+import { HeroHeadline } from "@/components/landing/HeroHeadline";
 import { PageShell } from "@/components/PageShell";
 
 export const dynamic = "force-dynamic";
@@ -46,7 +47,7 @@ const FAQ = [
   },
   {
     q: "Can I edit the numbers on my profile?",
-    a: "No. Followers, engagement, reach, audience and content stats come from your connected account, and there is no way to type or change them. You can edit your display name and bio, and choose whether your public link is visible.",
+    a: "No. Followers, engagement, reach, audience and content stats come from your connected account, and there is no way to type or change them. Your name and bio also come from your Instagram profile. You choose whether your public link is visible.",
   },
   {
     q: "What happens if I disconnect my Instagram account?",
@@ -64,31 +65,28 @@ export default function HomePage({
   return (
     <PageShell width="wide">
       {error ? (
-        <p className="mb-6 rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        <p className="mb-6 mt-4 rounded-xl border border-border bg-card px-4 py-3 text-sm text-destructive">
           {error}
         </p>
       ) : null}
 
       <section className="grid items-center gap-12 pt-10 lg:grid-cols-2 lg:gap-16 sm:pt-16">
         <div>
-          <NoMoreScreenshots />
-          <h1 className="mt-4 max-w-xl font-display text-4xl font-semibold leading-tight text-foreground sm:text-6xl">
-            Your creator profile, always live and verified.
-          </h1>
+          <HeroHeadline />
           <p className="mt-5 max-w-xl text-lg text-muted-foreground">
             Connect Instagram once. ReeledIn keeps your stats updated automatically. When a brand asks for your
             numbers, send one link.
           </p>
-          <div className="mt-8 flex flex-wrap gap-3">
+          <div className="mt-8 flex gap-2 text-[13px] min-[360px]:text-sm min-[400px]:text-[15px] sm:gap-3 sm:text-base">
             <a
               href="/api/auth/instagram"
-              className="inline-block rounded-lg bg-primary px-5 py-3 font-medium text-white hover:bg-[#0086dd]"
+              className="btn-primary min-w-0 flex-1 px-2.5 py-3 min-[400px]:px-3 sm:flex-none sm:px-5"
             >
               Create my ReeledIn
             </a>
             <Link
               href="/demo"
-              className="inline-block rounded-lg border border-border px-5 py-3 font-medium text-foreground hover:border-primary"
+              className="btn-secondary min-w-0 flex-1 px-2.5 py-3 min-[400px]:px-3 sm:flex-none sm:px-5"
             >
               See a sample profile
             </Link>
@@ -133,25 +131,17 @@ export default function HomePage({
       <BrandPreview />
 
       <section className="mt-28">
-        <h2 className="font-display text-3xl font-semibold text-foreground sm:text-4xl">Questions</h2>
-        <dl className="mt-8 divide-y divide-border border-y border-border">
-          {FAQ.map((item) => (
-            <div key={item.q} className="grid gap-2 py-6 md:grid-cols-[1fr_1.6fr] md:gap-10">
-              <dt className="font-display text-lg font-semibold text-foreground">{item.q}</dt>
-              <dd className="text-muted-foreground">{item.a}</dd>
-            </div>
-          ))}
-        </dl>
+        <div className="grid gap-8 lg:grid-cols-[1fr_2fr] lg:gap-16">
+          <h2 className="font-display text-3xl font-semibold text-foreground sm:text-4xl">Questions</h2>
+          <Faq items={FAQ} />
+        </div>
       </section>
 
       <section className="mt-28 rounded-2xl border border-border bg-card px-6 py-14 text-center sm:px-10">
         <h2 className="mx-auto max-w-3xl font-display text-3xl font-semibold leading-tight text-foreground sm:text-5xl">
           The next time a brand asks for your stats, don&apos;t send a screenshot.
         </h2>
-        <a
-          href="/api/auth/instagram"
-          className="mt-8 inline-block rounded-lg bg-primary px-6 py-3 font-medium text-white hover:bg-[#0086dd]"
-        >
+        <a href="/api/auth/instagram" className="btn-primary mt-8 px-6 py-3">
           Create your ReeledIn
         </a>
         <p className="mt-4 text-sm text-muted-foreground">Connect once. Share forever.</p>

@@ -42,19 +42,90 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/*
+ * Button hierarchy. Primary: dark surface, 1px Instagram-gradient edge, soft static glow
+ * (box-shadow only — no blur filters, so it stays cheap on phones). Secondary: quiet outline.
+ * Tertiary: plain text link. Callers add padding/size with utilities.
+ */
+@layer components {
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border: 1px solid transparent;
+    border-radius: 0.625rem;
+    font-weight: 500;
+    color: #fff;
+    white-space: nowrap;
+    background:
+      linear-gradient(#0c0c0c, #0c0c0c) padding-box,
+      linear-gradient(115deg, #833ab4, #e1306c 40%, #f56040 70%, #fcaf45) border-box;
+    box-shadow:
+      0 8px 28px -14px rgba(225, 48, 108, 0.7),
+      0 6px 26px -16px rgba(131, 58, 180, 0.8);
+    transition:
+      box-shadow 0.2s ease,
+      background 0.2s ease;
+  }
+
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 0.625rem;
+    background: var(--background);
+    font-weight: 500;
+    color: var(--foreground);
+    white-space: nowrap;
+    transition:
+      border-color 0.2s ease,
+      background-color 0.2s ease;
+  }
+
+  .link-tertiary {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--foreground);
+    transition: color 0.2s ease;
+  }
+
+  @media (hover: hover) {
+    .btn-primary:not([aria-disabled="true"]):hover {
+      background:
+        linear-gradient(#161616, #161616) padding-box,
+        linear-gradient(115deg, #833ab4, #e1306c 40%, #f56040 70%, #fcaf45) border-box;
+      box-shadow:
+        0 10px 34px -12px rgba(225, 48, 108, 0.85),
+        0 8px 30px -14px rgba(131, 58, 180, 0.9);
+    }
+
+    .btn-secondary:hover {
+      border-color: #3a3a3a;
+      background-color: #0f0f0f;
+    }
+
+    .link-tertiary:hover {
+      color: var(--verified);
+    }
+  }
+}
+
+/* Left-to-right reveal. Dash offsets can't be used: the chart stretches with non-scaling strokes,
+   which breaks pathLength-normalised dashes. */
 @keyframes chart-draw {
   from {
-    stroke-dashoffset: 1;
+    clip-path: inset(-4px 100% -4px -4px);
   }
   to {
-    stroke-dashoffset: 0;
+    clip-path: inset(-4px -4px -4px -4px);
   }
 }
 
 .chart-line {
-  stroke-dasharray: 1;
-  stroke-dashoffset: 1;
-  animation: chart-draw 1.15s ease-out forwards;
+  animation: chart-draw 1.15s ease-out both;
 }
 
 @keyframes freshness-pulse {
@@ -72,10 +143,11 @@ body {
   animation: freshness-pulse 3.5s ease-in-out infinite;
 }
 
-@keyframes rotating-line-in {
+/* Rotate words: the next word drops in from above; the current one leaves downward. */
+@keyframes rotate-word-in {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(-0.35em);
   }
   to {
     opacity: 1;
@@ -83,8 +155,25 @@ body {
   }
 }
 
-.rotating-line {
-  animation: rotating-line-in 0.45s ease-out both;
+@keyframes rotate-word-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(0.35em);
+  }
+}
+
+.rotate-word-in {
+  display: inline-block;
+  animation: rotate-word-in 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.rotate-word-out {
+  display: inline-block;
+  animation: rotate-word-out 0.24s ease-in both;
 }
 
 /* Percentage width keeps the card out of grid min-content sizing; 448px is the desktop card width. */
@@ -96,7 +185,7 @@ body {
 /* Faces are absolutely positioned, so the card can't grow when a line wraps on very narrow phones. */
 @media (max-width: 359px) {
   .flip-card.sample-flip {
-    height: 340px;
+    height: 380px;
   }
 }
 
@@ -187,12 +276,12 @@ select:focus-visible {
   }
 
   .freshness-pulse,
-  .rotating-line {
+  .rotate-word-in,
+  .rotate-word-out {
     animation: none !important;
   }
 
   .chart-line {
     animation: none !important;
-    stroke-dashoffset: 0;
   }
 }

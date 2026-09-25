@@ -12,11 +12,17 @@ export type AudienceView = {
   takenAt: Date;
 };
 
-export type TrendPoint = {
-  takenAt: Date;
-  engagementRate: number;
-  reach: number | null;
+export type TrendSeries = {
+  points: Array<{ takenAt: Date; value: number }>;
+  /** `daily`: one value per calendar day from DailyInsight. `sync`: one value per stored snapshot. */
+  cadence: "daily" | "sync";
 };
+
+export type ProfileTrends = { reach: TrendSeries; engagement: TrendSeries };
+
+export type DailyInsightRow = { date: Date; reach: number | null; engagementRate: number | null };
+
+export const TREND_DAYS = 30;
 
 export type CredentialDeltas = {
   followers: StatDelta | null;
@@ -57,7 +63,7 @@ export type PublicProfileView = {
   reach: number | null;
   avgReelViews: number | null;
   deltas: CredentialDeltas;
-  trend: TrendPoint[];
+  trends: ProfileTrends;
   audience: AudienceView | null;
   recentPosts: RecentPost[];
 };
@@ -176,6 +182,37 @@ export function computeDeltas(
   };
 }
 
+function dailyPoints(daily: DailyInsightRow[], pick: (row: DailyInsightRow) => number | null) {
+  const rows = daily
+    .map((row) => ({ takenAt: row.date, value: pick(row) }))
+    .filter((row): row is { takenAt: Date; value: number } => row.value !== null)
+    .sort((a, b) => a.takenAt.getTime() - b.takenAt.getTime());
+  if (rows.length === 0) return rows;
+  const cutoff = rows[rows.length - 1].takenAt.getTime() - (TREND_DAYS - 1) * 24 * 60 * 60 * 1000;
+  return rows.filter((row) => row.takenAt.getTime() >= cutoff);
+}
+
+/** Daily history when at least two days exist, otherwise the per-sync snapshot line. */
+function buildTrends(history: ProfileSnapshotRow[], daily: DailyInsightRow[]): ProfileTrends {
+  function pick(
+    fromDaily: (row: DailyInsightRow) => number | null,
+    fromSnapshot: (row: ProfileSnapshotRow) => number | null,
+  ): TrendSeries {
+    const points = dailyPoints(daily, fromDaily);
+    if (points.length >= 2) return { points, cadence: "daily" };
+    return {
+      cadence: "sync",
+      points: history
+        .map((row) => ({ takenAt: row.takenAt, value: fromSnapshot(row) }))
+        .filter((row): row is { takenAt: Date; value: number } => row.value !== null),
+    };
+  }
+  return {
+    reach: pick((row) => row.reach, (row) => row.reach),
+    engagement: pick((row) => row.engagementRate, (row) => row.engagementRate),
+  };
+}
+
 /** The one path from stored snapshots to what the public profile and dashboard render. */
 export function buildPublicProfileView(input: {
   slug: string;
@@ -187,6 +224,7 @@ export function buildPublicProfileView(input: {
   lastSyncedAt: Date | null;
   /** Oldest first; must contain at least one row. */
   history: ProfileSnapshotRow[];
+  daily: DailyInsightRow[];
   audience: AudienceRow | null;
 }): PublicProfileView {
   const { history } = input;
@@ -205,7 +243,7 @@ export function buildPublicProfileView(input: {
     reach: snapshot.reach,
     avgReelViews: computeAvgReelViews(recentPosts),
     deltas: computeDeltas(history),
-    trend: history.map((row) => ({ takenAt: row.takenAt, engagementRate: row.engagementRate, reach: row.reach })),
+    trends: buildTrends(history, input.daily),
     audience: mapAudience(input.audience),
     recentPosts,
   };

@@ -11,6 +11,7 @@ import {
 } from "./instagram";
 import { prisma } from "./prisma";
 import { slugFromUsername, slugWithSuffix } from "./slug";
+import { recordDailyInsights } from "./sync";
 
 async function uniqueSlug(username: string, userId: string): Promise<string> {
   const base = slugFromUsername(username);
@@ -102,6 +103,12 @@ export async function connectFromAuthorizationCode(code: string) {
     }
   } catch {
     // Insights are a separate permission and can lag. Stats still land; dashboard will retry on sync.
+  }
+
+  try {
+    await recordDailyInsights(account.id, ig.id, longLived.accessToken, ig.followersCount);
+  } catch {
+    // Graphs fall back to per-sync snapshots until a later sync backfills.
   }
 
   const slug = await uniqueSlug(ig.username, user.id);

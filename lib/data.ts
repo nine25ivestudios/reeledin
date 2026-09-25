@@ -1,8 +1,8 @@
-import type { AudienceSnapshot, ConnectedAccount, StatsSnapshot } from "@prisma/client";
+import type { AudienceSnapshot, ConnectedAccount, DailyInsight, StatsSnapshot } from "@prisma/client";
 import { cookies } from "next/headers";
 import { prisma } from "./prisma";
 import { getSessionUserId } from "./session";
-import { buildPublicProfileView, type PublicProfileView } from "./profile-view";
+import { buildPublicProfileView, TREND_DAYS, type PublicProfileView } from "./profile-view";
 
 export type {
   AgeBrackets,
@@ -10,19 +10,23 @@ export type {
   CredentialDeltas,
   GenderSplit,
   ProfileSnapshotRow,
+  ProfileTrends,
   PublicProfileView,
-  TrendPoint,
+  TrendSeries,
 } from "./profile-view";
 export { parseAgeBrackets, parseGenderSplit, parsePlaces, parseRecentPosts } from "./profile-view";
 
 type AccountWithHistory = ConnectedAccount & {
   snapshots: StatsSnapshot[];
   audienceSnapshots: AudienceSnapshot[];
+  dailyInsights: DailyInsight[];
 };
 
 const accountInclude = {
   snapshots: { orderBy: { takenAt: "asc" } },
   audienceSnapshots: { orderBy: { takenAt: "desc" }, take: 1 },
+  // Reach lags engagement by a day, so fetch a little past the window; buildTrends trims per series.
+  dailyInsights: { orderBy: { date: "desc" }, take: TREND_DAYS + 3 },
 } as const;
 
 function primaryAccount<T extends { platform: string }>(accounts: T[]): T | null {
@@ -40,6 +44,7 @@ function viewFromAccount(slug: string, account: AccountWithHistory): PublicProfi
     profilePictureUrl: account.profilePictureUrl,
     lastSyncedAt: account.lastSyncedAt,
     history: account.snapshots,
+    daily: account.dailyInsights,
     audience: account.audienceSnapshots[0] ?? null,
   });
 }

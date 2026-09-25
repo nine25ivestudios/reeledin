@@ -1,11 +1,40 @@
 import { hoursSinceSync } from "./freshness";
 
 export function formatInteger(value: number): string {
-  return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(value);
+  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(value);
+}
+
+const COMPACT_FROM = 10_000;
+const COMPACT_UNITS = [
+  { size: 1e3, suffix: "K", digits: 1 },
+  { size: 1e6, suffix: "M", digits: 2 },
+  { size: 1e9, suffix: "B", digits: 2 },
+] as const;
+
+/**
+ * Headline value plus the exact count to print beneath it. Below 10,000 the exact number is
+ * already short, so `exact` is null and nothing is repeated.
+ */
+export function compactNumber(value: number): { short: string; exact: string | null } {
+  const exact = formatInteger(value);
+  const abs = Math.abs(value);
+  if (abs < COMPACT_FROM) return { short: exact, exact: null };
+
+  let index = COMPACT_UNITS.length - 1;
+  while (index > 0 && abs < COMPACT_UNITS[index].size) index -= 1;
+  let unit = COMPACT_UNITS[index];
+  let scaled = Number((value / unit.size).toFixed(unit.digits));
+  // 999,960 rounds to 1000.0K; promote so it reads 1M.
+  if (Math.abs(scaled) >= 1000 && index < COMPACT_UNITS.length - 1) {
+    unit = COMPACT_UNITS[index + 1];
+    scaled = Number((value / unit.size).toFixed(unit.digits));
+  }
+  const short = `${new Intl.NumberFormat("en-US", { maximumFractionDigits: unit.digits }).format(scaled)}${unit.suffix}`;
+  return { short, exact };
 }
 
 export function formatDecimal(value: number, digits = 1): string {
-  return new Intl.NumberFormat("en-IN", {
+  return new Intl.NumberFormat("en-US", {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
   }).format(value);
@@ -102,8 +131,9 @@ export function relativePercentDelta(
   };
 }
 
+/** Daily history is keyed by UTC midnight, so the label has to read the UTC calendar day. */
 export function formatChartDay(date: Date): string {
-  return new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short" }).format(date);
+  return new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", timeZone: "UTC" }).format(date);
 }
 
 export function integerDelta(

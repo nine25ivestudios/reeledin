@@ -47,9 +47,9 @@ export function SampleFlipCard({
             onPointerDown={stop}
             onKeyDown={stop}
             onClick={stop}
-            className="mt-5 rounded-lg bg-primary px-5 py-3 font-medium text-white hover:bg-[#0086dd]"
+            className="btn-primary mt-5 px-5 py-3"
           >
-            See {firstName}&apos;s full profile →
+            See {firstName}&apos;s full profile
           </Link>
           <p className="mt-5 text-xs text-muted-foreground">Tap the card to flip back</p>
         </div>

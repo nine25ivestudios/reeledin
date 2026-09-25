@@ -35,7 +35,7 @@ export function SyncButton({ compact = false }: { compact?: boolean }) {
         type="button"
         onClick={sync}
         disabled={state === "pending"}
-        className="rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-white hover:bg-[#0086dd] disabled:opacity-60"
+        className="btn-secondary px-3 py-1.5 text-sm disabled:opacity-60"
       >
         {state === "pending" ? "Syncing…" : "Sync now"}
       </button>

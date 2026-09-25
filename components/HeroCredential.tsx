@@ -1,12 +1,12 @@
 import { getDemoProfile } from "@/lib/demo-data";
-import { formatRelativeTime, initialsFrom } from "@/lib/format";
+import { compactNumber, formatRelativeTime, initialsFrom } from "@/lib/format";
 import { VerifiedCheck } from "./BrandMark";
 import { CountUp } from "./CountUp";
 import { FreshnessRing } from "./FreshnessRing";
 import { SampleFlipCard } from "./SampleFlipCard";
 
 /** FlipCard needs a fixed height; this matches the card's natural content height. */
-const CARD_HEIGHT = 316;
+const CARD_HEIGHT = 334;
 
 export function HeroCredential() {
   const demo = getDemoProfile();
@@ -14,6 +14,7 @@ export function HeroCredential() {
     demo.recentPosts.length > 0
       ? demo.recentPosts.reduce((sum, p) => sum + p.likeCount, 0) / demo.recentPosts.length
       : 0;
+  const followersExact = compactNumber(demo.followersCount).exact;
 
   const front = (
     <div className="h-full rounded-2xl border border-border bg-card px-6 py-7">
@@ -42,8 +43,11 @@ export function HeroCredential() {
         <div className="rounded-xl bg-background px-2 py-3 text-center">
           <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">Followers</dt>
           <dd className="mt-1 font-display text-lg font-semibold text-foreground sm:text-xl">
-            <CountUp value={demo.followersCount} kind="integer" />
+            <CountUp value={demo.followersCount} kind="compact" />
           </dd>
+          {followersExact ? (
+            <dd className="mt-0.5 text-[10px] tabular-nums text-muted-foreground">{followersExact}</dd>
+          ) : null}
         </div>
         <div className="rounded-xl bg-background px-2 py-3 text-center">
           <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">Engagement</dt>

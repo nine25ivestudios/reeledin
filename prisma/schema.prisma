@@ -39,8 +39,27 @@ model ConnectedAccount {
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   snapshots         StatsSnapshot[]
   audienceSnapshots AudienceSnapshot[]
+  dailyInsights     DailyInsight[]
 
   @@unique([platform, externalId])
+}
+
+// One row per account per day, upserted on every connect/sync so re-fetched days overwrite.
+model DailyInsight {
+  id        String   @id @default(cuid())
+  accountId String
+  // UTC midnight of the day the values describe.
+  date      DateTime
+  // Instagram user insights `reach`, period=day time series: unique accounts reached that day.
+  reach     Int?
+  // ReeledIn-derived, same formula as StatsSnapshot.engagementRate: likes + comments averaged over
+  // the 12 most recent posts published by the end of `date`, divided by followers at sync time.
+  engagementRate Float?
+  updatedAt DateTime @updatedAt
+
+  account ConnectedAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId, date])
 }
 
 model StatsSnapshot {

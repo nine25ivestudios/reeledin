@@ -4,9 +4,12 @@ import { prisma } from "./prisma";
 import {
   AUDIENCE_MIN_FOLLOWERS,
   AUDIENCE_SYNC_INTERVAL_MS,
+  computeDailyEngagement,
   computeEngagement,
+  fetchDailyReach,
   fetchFollowerDemographics,
   fetchInstagramProfile,
+  fetchMediaHistory,
   fetchMonthlyReach,
   fetchRecentMediaEngagement,
   InstagramApiError,
@@ -49,6 +52,43 @@ async function ensureFreshToken(account: ConnectedAccount): Promise<string> {
   }
 
   return token;
+}
+
+const DAILY_HISTORY_DAYS = 30;
+
+/**
+ * Backfills the last 30 days of daily reach and derived engagement. Each part is optional: a
+ * failed fetch leaves that column untouched on existing rows instead of blanking it.
+ */
+export async function recordDailyInsights(
+  accountId: string,
+  igUserId: string,
+  accessToken: string,
+  followersCount: number,
+): Promise<void> {
+  const [reach, media] = await Promise.all([
+    fetchDailyReach(igUserId, accessToken, DAILY_HISTORY_DAYS).catch(() => []),
+    fetchMediaHistory(accessToken).catch(() => null),
+  ]);
+  const engagement = media ? computeDailyEngagement(media, followersCount, DAILY_HISTORY_DAYS) : [];
+
+  const byDay = new Map<number, { reach?: number; engagementRate?: number }>();
+  for (const row of reach) byDay.set(row.date.getTime(), { ...byDay.get(row.date.getTime()), reach: row.value });
+  for (const row of engagement) {
+    byDay.set(row.date.getTime(), { ...byDay.get(row.date.getTime()), engagementRate: row.value });
+  }
+  if (byDay.size === 0) return;
+
+  await prisma.$transaction(
+    [...byDay].map(([time, values]) => {
+      const date = new Date(time);
+      return prisma.dailyInsight.upsert({
+        where: { accountId_date: { accountId, date } },
+        create: { accountId, date, ...values },
+        update: values,
+      });
+    }),
+  );
 }
 
 async function audienceDue(accountId: string): Promise<boolean> {
@@ -126,6 +166,12 @@ export async function syncAccount(accountId: string, options?: { forceAudience?:
         },
       }),
     ]);
+
+    try {
+      await recordDailyInsights(account.id, profile.id, token, profile.followersCount);
+    } catch {
+      // Daily history is additive; the snapshot above already landed.
+    }
   } catch (error) {
     const message =
       error instanceof InstagramApiError

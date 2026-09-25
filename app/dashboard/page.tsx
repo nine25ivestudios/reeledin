@@ -16,7 +16,7 @@ export default async function DashboardPage() {
 
   if (!account || !profile) {
     return (
-      <PageShell showConnect={false} width="wide">
+      <PageShell showConnect={false} width="profile">
         <p className="mt-8 rounded-2xl border border-border bg-card px-5 py-4 text-sm text-destructive">
           No Instagram account is connected to this session.{" "}
           <a className="underline" href="/api/auth/instagram">
@@ -32,7 +32,7 @@ export default async function DashboardPage() {
   const displayUrl = publicUrl.replace(/^https?:\/\//, "");
 
   return (
-    <PageShell showConnect={false} width="wide">
+    <PageShell showConnect={false} width="profile">
       <div className="space-y-6 pt-6">
         {account.lastSyncError ? (
           <p className="rounded-2xl border border-border bg-card px-5 py-4 text-sm text-destructive">
@@ -60,7 +60,7 @@ export default async function DashboardPage() {
               <form action="/api/auth/logout" method="post">
                 <button
                   type="submit"
-                  className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground"
+                  className="btn-secondary px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground"
                 >
                   Sign out
                 </button>

@@ -369,24 +369,15 @@ export async function fetchMonthlyReach(igUserId: string, accessToken: string): 
   const until = Math.floor(Date.now() / 1000);
   const since = until - 28 * 24 * 60 * 60;
 
+  // `day` is the only period Instagram Login accepts for reach. A `days_28` request still returns
+  // 200 but silently covers the default 24-hour window, so the range must come from since/until.
   const attempts: URLSearchParams[] = [
-    new URLSearchParams({
-      metric: "reach",
-      period: "days_28",
-      metric_type: "total_value",
-      access_token: accessToken,
-    }),
     new URLSearchParams({
       metric: "reach",
       period: "day",
       metric_type: "total_value",
       since: String(since),
       until: String(until),
-      access_token: accessToken,
-    }),
-    new URLSearchParams({
-      metric: "reach",
-      period: "days_28",
       access_token: accessToken,
     }),
   ];
@@ -403,6 +394,107 @@ export async function fetchMonthlyReach(igUserId: string, accessToken: string): 
     }
   }
   return null;
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function utcDay(ms: number): Date {
+  const d = new Date(ms);
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+}
+
+export type DailyValue = { date: Date; value: number };
+
+/**
+ * Daily unique reach. `reach` is the only account metric Instagram serves as a time series
+ * (views, total_interactions, accounts_engaged are total_value only). Each value's `end_time`
+ * closes the day it describes, so the stored date is the day before it.
+ */
+export async function fetchDailyReach(igUserId: string, accessToken: string, days = 30): Promise<DailyValue[]> {
+  const until = Math.floor(Date.now() / 1000);
+  const params = new URLSearchParams({
+    metric: "reach",
+    period: "day",
+    metric_type: "time_series",
+    since: String(until - days * 24 * 60 * 60),
+    until: String(until),
+    access_token: accessToken,
+  });
+  const res = await fetch(`https://graph.instagram.com/${igUserId}/insights?${params.toString()}`);
+  const body = await readJson<{ data?: Array<{ values?: Array<{ value?: unknown; end_time?: string }> }> }>(
+    res,
+    "Instagram rejected the daily reach request.",
+  );
+  if (!res.ok) throw new InstagramApiError(graphErrorMessage(body, "Instagram did not return daily reach."), res.status);
+
+  const out: DailyValue[] = [];
+  for (const row of body.data?.[0]?.values ?? []) {
+    const end = row.end_time ? Date.parse(row.end_time) : NaN;
+    if (typeof row.value !== "number" || !Number.isFinite(row.value) || Number.isNaN(end)) continue;
+    out.push({ date: utcDay(end - DAY_MS), value: Math.round(row.value) });
+  }
+  return out;
+}
+
+export type MediaHistoryItem = { timestamp: string; likeCount: number; commentsCount: number };
+
+/** Newest first. `complete` is true when the account has no older posts beyond these. */
+export async function fetchMediaHistory(
+  accessToken: string,
+  limit = 50,
+): Promise<{ items: MediaHistoryItem[]; complete: boolean }> {
+  const params = new URLSearchParams({
+    fields: "timestamp,like_count,comments_count",
+    limit: String(limit),
+    access_token: accessToken,
+  });
+  const res = await fetch(`https://graph.instagram.com/me/media?${params.toString()}`);
+  const body = await readJson<{
+    data?: Array<{ timestamp?: string; like_count?: number; comments_count?: number }>;
+    paging?: { next?: string };
+  }>(res, "Instagram rejected the media history request.");
+  if (!res.ok) throw new InstagramApiError(graphErrorMessage(body, "Instagram did not return post history."), res.status);
+
+  const items = (body.data ?? [])
+    .filter((item): item is typeof item & { timestamp: string } => Boolean(item.timestamp))
+    .map((item) => ({
+      timestamp: item.timestamp,
+      likeCount: item.like_count ?? 0,
+      commentsCount: item.comments_count ?? 0,
+    }));
+  return { items, complete: !body.paging?.next };
+}
+
+/**
+ * Engagement rate as it would have read at the end of each of the last `days` days, using the
+ * same formula as `computeEngagement` over the 12 posts published most recently by that day.
+ * Like and comment counts are today's totals, and the denominator is today's follower count,
+ * because Instagram exposes neither historically.
+ */
+export function computeDailyEngagement(
+  history: { items: MediaHistoryItem[]; complete: boolean },
+  followersCount: number,
+  days = 30,
+  now = new Date(),
+  window = 12,
+): DailyValue[] {
+  if (followersCount <= 0) return [];
+  const posts = history.items
+    .map((item) => ({ ...item, at: Date.parse(item.timestamp) }))
+    .filter((item) => !Number.isNaN(item.at))
+    .sort((a, b) => b.at - a.at);
+
+  const today = utcDay(now.getTime()).getTime();
+  const out: DailyValue[] = [];
+  for (let i = days - 1; i >= 0; i -= 1) {
+    const date = new Date(today - i * DAY_MS);
+    const endOfDay = date.getTime() + DAY_MS;
+    const eligible = posts.filter((post) => post.at < endOfDay).slice(0, window);
+    if (eligible.length === 0) continue;
+    if (eligible.length < window && !history.complete) continue;
+    out.push({ date, value: computeEngagement(eligible, followersCount).engagementRate });
+  }
+  return out;
 }
 
 export function computeAvgReelViews(media: RecentPost[]): number | null {

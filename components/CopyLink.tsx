@@ -26,7 +26,7 @@ export function CopyLink({ url, variant = "full" }: Props) {
         <button
           type="button"
           onClick={copy}
-          className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-foreground hover:border-primary"
+          className="btn-secondary px-3 py-1.5 text-sm"
         >
           {state === "copied" ? "Copied" : "Share"}
         </button>
@@ -46,7 +46,7 @@ export function CopyLink({ url, variant = "full" }: Props) {
         <button
           type="button"
           onClick={copy}
-          className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-[#0086dd]"
+          className="btn-primary px-4 py-2 text-sm"
         >
           {state === "copied" ? "Copied" : "Share link"}
         </button>
@@ -54,7 +54,7 @@ export function CopyLink({ url, variant = "full" }: Props) {
           href={url}
           target="_blank"
           rel="noreferrer"
-          className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:border-primary"
+          className="btn-secondary px-4 py-2 text-sm"
         >
           Open link
         </a>

@@ -8,6 +8,8 @@ function deltaClass(delta: StatDelta | null | undefined) {
 export type StatBarItem = {
   label: string;
   value: string | null;
+  /** Exact count printed small beneath an abbreviated value. */
+  exact?: string | null;
   featured?: boolean;
   muted?: boolean;
   tag?: string;
@@ -41,11 +43,14 @@ export function StatBar({
             <p className="text-xs uppercase tracking-wide text-muted-foreground">{item.label}</p>
             <p
               className={`mt-1 font-display font-semibold tabular-nums leading-none ${
-                item.featured ? "text-5xl sm:text-6xl" : "text-xl sm:text-2xl"
+                item.featured ? "text-4xl sm:text-6xl" : "text-xl sm:text-2xl"
               } ${item.muted || empty ? "text-muted-foreground" : "text-foreground"}`}
             >
               {item.value ?? "—"}
             </p>
+            {!empty && item.exact ? (
+              <p className="mt-1.5 text-xs tabular-nums text-muted-foreground">{item.exact}</p>
+            ) : null}
             {empty && item.emptyCaption ? (
               <p className="mt-2 text-[11px] font-medium text-muted-foreground">{item.emptyCaption}</p>
             ) : null}

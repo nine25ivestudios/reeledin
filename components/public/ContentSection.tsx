@@ -1,10 +1,11 @@
-import { detectThemes, pickTopPost, postTitle } from "@/lib/content";
-import { AFTER_NEXT_SYNC, formatInteger, formatPostDate } from "@/lib/format";
+import { pickTopPost, postTitle } from "@/lib/content";
+import { AFTER_NEXT_SYNC, compactNumber, formatInteger, formatPostDate } from "@/lib/format";
 import type { RecentPost } from "@/lib/instagram";
 import { PlayPlaceholder, PostThumb } from "./PostThumb";
 
-function TopPostCard({ posts }: { posts: RecentPost[] }) {
+export function ContentSection({ posts }: { posts: RecentPost[] }) {
   const top = pickTopPost(posts);
+  const views = top && top.playCount !== null ? compactNumber(Math.round(top.playCount)) : null;
 
   return (
     <section className="rounded-2xl border border-border bg-card p-5 sm:p-6">
@@ -22,9 +23,18 @@ function TopPostCard({ posts }: { posts: RecentPost[] }) {
             <p className="font-display text-lg font-semibold leading-snug text-foreground">{postTitle(top)}</p>
             <div className="mt-4">
               <p className="font-display text-4xl font-semibold tabular-nums leading-none text-foreground">
-                {top.playCount === null ? "—" : formatInteger(Math.round(top.playCount))}
+                {views ? views.short : "—"}
               </p>
-              <p className="mt-2 text-xs text-muted-foreground">{top.playCount === null ? `Views ${AFTER_NEXT_SYNC.toLowerCase()}` : "views"}</p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                {views ? (
+                  <>
+                    {views.exact ? <span className="tabular-nums">{views.exact} </span> : null}
+                    views
+                  </>
+                ) : (
+                  `Views ${AFTER_NEXT_SYNC.toLowerCase()}`
+                )}
+              </p>
             </div>
             <p className="mt-4 text-xs text-muted-foreground">
               <span className="font-display tabular-nums text-foreground">{formatInteger(top.likeCount)}</span> likes
@@ -38,12 +48,7 @@ function TopPostCard({ posts }: { posts: RecentPost[] }) {
               ) : null}
             </p>
             {top.permalink ? (
-              <a
-                href={top.permalink}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-auto pt-5 text-sm text-verified hover:underline"
-              >
+              <a href={top.permalink} target="_blank" rel="noreferrer" className="link-tertiary mt-auto self-start pt-5">
                 Open on Instagram
               </a>
             ) : null}
@@ -51,46 +56,5 @@ function TopPostCard({ posts }: { posts: RecentPost[] }) {
         </div>
       )}
     </section>
-  );
-}
-
-function ThemesCard({ posts }: { posts: RecentPost[] }) {
-  const themes = detectThemes(posts);
-  const captionsSynced = posts.some((p) => p.caption !== null);
-
-  return (
-    <section className="rounded-2xl border border-border bg-card p-5 sm:p-6">
-      <h2 className="font-display text-lg font-semibold text-foreground">Content themes</h2>
-      <p className="mt-1 text-xs text-muted-foreground">Detected from recent captions.</p>
-      {themes.length > 0 ? (
-        <ul className="mt-5 flex flex-wrap gap-2">
-          {themes.map((theme) => (
-            <li
-              key={theme.label}
-              className="rounded-full border border-border bg-background px-3 py-1 text-sm text-foreground"
-            >
-              {theme.label}
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="mt-5 text-sm text-muted-foreground">
-          {posts.length === 0
-            ? "No content synced yet."
-            : captionsSynced
-              ? "No recurring topics in recent captions yet."
-              : AFTER_NEXT_SYNC}
-        </p>
-      )}
-    </section>
-  );
-}
-
-export function ContentSection({ posts }: { posts: RecentPost[] }) {
-  return (
-    <div className="grid gap-3 md:grid-cols-[1.6fr_1fr]">
-      <TopPostCard posts={posts} />
-      <ThemesCard posts={posts} />
-    </div>
   );
 }

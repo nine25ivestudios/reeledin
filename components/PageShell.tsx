@@ -18,12 +18,14 @@ export function SiteFooter() {
   );
 }
 
-type Width = "wide" | "medium" | "narrow";
+type Width = "profile" | "wide" | "medium" | "narrow";
 
-const WIDTH: Record<Width, string> = {
-  wide: "max-w-6xl",
-  medium: "max-w-4xl",
-  narrow: "max-w-xl",
+/** Centred content column; the header bar and page background stay full-bleed around it. */
+const CONTAINER: Record<Width, string> = {
+  profile: "mx-auto w-full max-w-[88rem] px-5 md:px-8 xl:px-10",
+  wide: "mx-auto w-full max-w-6xl px-5",
+  medium: "mx-auto w-full max-w-4xl px-5",
+  narrow: "mx-auto w-full max-w-xl px-5",
 };
 
 export function PageShell({
@@ -38,10 +40,12 @@ export function PageShell({
   headerNote?: string;
 }) {
   return (
-    <div className={`mx-auto min-h-screen w-full ${WIDTH[width]} px-5`}>
-      <SiteHeader showConnect={showConnect} note={headerNote} />
-      {children}
-      <SiteFooter />
+    <div className="min-h-screen w-full overflow-x-clip">
+      <SiteHeader showConnect={showConnect} note={headerNote} container={CONTAINER[width]} />
+      <div className={CONTAINER[width]}>
+        {children}
+        <SiteFooter />
+      </div>
     </div>
   );
 }

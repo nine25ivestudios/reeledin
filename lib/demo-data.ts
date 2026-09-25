@@ -4,7 +4,12 @@
  */
 import { roundToHour } from "./freshness";
 import type { RecentPost } from "./instagram";
-import { buildPublicProfileView, type ProfileSnapshotRow, type PublicProfileView } from "./profile-view";
+import {
+  buildPublicProfileView,
+  type DailyInsightRow,
+  type ProfileSnapshotRow,
+  type PublicProfileView,
+} from "./profile-view";
 
 export const DEMO_SLUG = "demo";
 
@@ -22,7 +27,7 @@ const POSTS: DemoPost[] = [
     likeCount: 4820,
     commentsCount: 312,
     playCount: 118400,
-    thumbnailUrl: "/demo/top-post.svg",
+    thumbnailUrl: "/images/maya-kapadia-placeholder.png",
     daysAgo: 4,
   },
   {
@@ -156,11 +161,44 @@ const AUDIENCE = {
   ],
 };
 
-/** Snapshots every 3 days for ~60 days, growing into the latest numbers. */
+/** Snapshots every 3 days for ~60 days, growing into the latest numbers. Only the headline deltas read these. */
 const SNAPSHOT_STEPS = 21;
 const START = { followers: 38950, engagement: 5.1, reach: 141000, views: 0.82 };
 const END = { followers: 42800, engagement: 5.8, reach: 186400, views: 1 };
-const WOBBLE = [0, 0.12, -0.08, 0.1, -0.05, 0.14, -0.1, 0.06, 0.09, -0.12, 0.04, 0.11, -0.06, 0.08, -0.03, 0.1, -0.09, 0.05, 0.12, -0.04, 0];
+
+const DAILY_DAYS = 30;
+
+function smoothstep(t: number) {
+  return t * t * (3 - 2 * t);
+}
+
+/**
+ * Designed daily curves for the charts, ending yesterday like Instagram's latest complete day.
+ * Reach climbs slowly with a soft rhythm and lifts for a couple of days after each reel;
+ * engagement eases up and lands exactly on the 5.8% headline.
+ */
+function demoDaily(lastSyncedAt: Date): DailyInsightRow[] {
+  const syncDay = Date.UTC(lastSyncedAt.getUTCFullYear(), lastSyncedAt.getUTCMonth(), lastSyncedAt.getUTCDate());
+  const reels = POSTS.filter((post) => post.playCount !== null);
+  const engagementAt = (t: number) => 5.46 + 0.3 * smoothstep(t) + 0.04 * Math.sin(t * Math.PI * 2.4);
+  const engagementFix = END.engagement - engagementAt(1);
+
+  return Array.from({ length: DAILY_DAYS }, (_, i) => {
+    const t = i / (DAILY_DAYS - 1);
+    const daysAgo = DAILY_DAYS - i;
+    const base = 8400 + 1900 * smoothstep(t);
+    const rhythm = 1 + 0.035 * Math.sin(t * Math.PI * 2 * 2.2 + 0.6);
+    const lift = reels.reduce(
+      (sum, post) => sum + (post.playCount as number) * 0.018 * Math.exp(-((daysAgo - (post.daysAgo - 1)) ** 2) / 5.12),
+      0,
+    );
+    return {
+      date: new Date(syncDay - daysAgo * DAY),
+      reach: Math.round((base * rhythm + lift) / 10) * 10,
+      engagementRate: Number((engagementAt(t) + engagementFix * t).toFixed(3)),
+    };
+  });
+}
 
 function postsJson(lastSyncedAt: Date, viewScale: number) {
   return JSON.stringify(
@@ -183,9 +221,9 @@ export function getDemoProfile(now = new Date()): PublicProfileView {
     return {
       takenAt,
       followersCount: Math.round(lerp(START.followers, END.followers)),
-      engagementRate: Number((lerp(START.engagement, END.engagement) + WOBBLE[i]).toFixed(2)),
+      engagementRate: Number(lerp(START.engagement, END.engagement).toFixed(2)),
       postsAnalyzed: POSTS.length,
-      reach: Math.round(lerp(START.reach, END.reach) * (1 + WOBBLE[i] / 4)),
+      reach: Math.round(lerp(START.reach, END.reach)),
       recentPosts: postsJson(takenAt, lerp(START.views, END.views)),
     };
   });
@@ -198,6 +236,7 @@ export function getDemoProfile(now = new Date()): PublicProfileView {
     profilePictureUrl: null,
     lastSyncedAt,
     history,
+    daily: demoDaily(lastSyncedAt),
     audience: {
       ageBrackets: JSON.stringify(AUDIENCE.ageBrackets),
       genderSplit: JSON.stringify(AUDIENCE.genderSplit),

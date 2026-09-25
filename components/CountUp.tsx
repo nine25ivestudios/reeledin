@@ -1,12 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { formatInteger, formatPercent } from "@/lib/format";
+import { compactNumber, formatInteger, formatPercent } from "@/lib/format";
 
 type Props = {
   value: number;
-  kind: "integer" | "percent";
+  kind: "integer" | "percent" | "compact";
 };
+
+function format(value: number, kind: Props["kind"]) {
+  if (kind === "percent") return formatPercent(value);
+  if (kind === "compact") return compactNumber(Math.round(value)).short;
+  return formatInteger(Math.round(value));
+}
 
 function prefersReducedMotion(): boolean {
   if (typeof window === "undefined") return false;
@@ -37,6 +43,5 @@ export function CountUp({ value, kind }: Props) {
     return () => cancelAnimationFrame(frame);
   }, [value]);
 
-  const label = kind === "percent" ? formatPercent(display) : formatInteger(Math.round(display));
-  return <span className="tabular-nums">{label}</span>;
+  return <span className="tabular-nums">{format(display, kind)}</span>;
 }

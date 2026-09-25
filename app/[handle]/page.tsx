@@ -22,7 +22,7 @@ export default async function PublicProfilePage({ params }: Props) {
   const shareUrl = `${getAppUrl()}/${profile.slug}`;
 
   return (
-    <PageShell showConnect={false} width="wide" headerNote={shareUrl.replace(/^https?:\/\//, "")}>
+    <PageShell showConnect={false} width="profile" headerNote={shareUrl.replace(/^https?:\/\//, "")}>
       <div className="pt-6">
         <PublicProfile
           profile={profile}
