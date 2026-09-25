@@ -6,6 +6,8 @@ const RESERVED = new Set([
   "logout",
   "deletion-status",
   "connect",
+  "demo",
+  "sample",
 ]);
 
 export function slugFromUsername(username: string): string {

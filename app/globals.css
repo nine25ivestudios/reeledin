@@ -71,6 +71,21 @@ body {
   animation: freshness-pulse 3.5s ease-in-out infinite;
 }
 
+@keyframes rotating-line-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.rotating-line {
+  animation: rotating-line-in 0.45s ease-out both;
+}
+
 .flag {
   font-family: "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
 }
@@ -119,7 +134,8 @@ select:focus-visible {
     transition-duration: 0.01ms !important;
   }
 
-  .freshness-pulse {
+  .freshness-pulse,
+  .rotating-line {
     animation: none !important;
   }
 
