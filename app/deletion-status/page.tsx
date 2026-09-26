@@ -18,7 +18,11 @@ export default function DeletionStatusPage({
       {!valid ? (
         <p className="mt-4 text-destructive">
           This confirmation link is invalid. If you requested deletion from Instagram, wait a few
-          minutes and open the status URL Meta provided, or email hello@reeledin.com.
+          minutes and open the status URL Meta provided, or follow{" "}
+          <a className="underline" href="/data-deletion">
+            /data-deletion
+          </a>
+          .
         </p>
       ) : (
         <p className="mt-4 text-muted-foreground">

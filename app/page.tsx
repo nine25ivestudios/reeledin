@@ -51,7 +51,7 @@ const FAQ = [
   },
   {
     q: "What happens if I disconnect my Instagram account?",
-    a: "If you remove ReeledIn in Instagram's Apps and websites settings and request deletion, Instagram notifies us and we delete your account, access token, stats, audience data and profile, so your link stops working. You can also request deletion by emailing hello@reeledin.com. Until then, if access stops, your numbers stop updating and the freshness ring on your profile shows how long ago they were last synced.",
+    a: "You can delete everything from the dashboard or /data-deletion while signed in, or by emailing nine25ive.studios@gmail.com. If you remove ReeledIn in Instagram's Apps and websites settings and request deletion, Instagram notifies us and we delete the same records, so your link stops working. If you only revoke access and do not delete, the numbers stop updating and the freshness ring shows how old they are.",
   },
 ];
 
@@ -79,7 +79,7 @@ export default function HomePage({
           </p>
           <div className="mt-8 flex gap-2 text-[13px] min-[360px]:text-sm min-[400px]:text-[15px] sm:gap-3 sm:text-base">
             <a
-              href="/api/auth/instagram"
+              href="/connect"
               className="btn-primary min-w-0 flex-1 px-2.5 py-3 min-[400px]:px-3 sm:flex-none sm:px-5"
             >
               Create my ReeledIn
@@ -141,7 +141,7 @@ export default function HomePage({
         <h2 className="mx-auto max-w-3xl font-display text-3xl font-semibold leading-tight text-foreground sm:text-5xl">
           The next time a brand asks for your stats, don&apos;t send a screenshot.
         </h2>
-        <a href="/api/auth/instagram" className="btn-primary mt-8 px-6 py-3">
+        <a href="/connect" className="btn-primary mt-8 px-6 py-3">
           Create your ReeledIn
         </a>
         <p className="mt-4 text-sm text-muted-foreground">Connect once. Share forever.</p>

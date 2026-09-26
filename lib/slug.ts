@@ -10,6 +10,9 @@ const RESERVED = new Set([
   "connect",
   "demo",
   "sample",
+  "terms",
+  "contact",
+  "data-deletion",
 ]);
 
 /**

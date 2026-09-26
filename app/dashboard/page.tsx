@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { PageShell } from "@/components/PageShell";
 import { PublicProfile } from "@/components/public/PublicProfile";
 import { SyncButton } from "@/components/SyncButton";
+import { DeleteAccountButton } from "@/components/DeleteAccountButton";
 import { VisibilityToggle } from "@/components/VisibilityToggle";
 import { getDashboardData } from "@/lib/data";
 import { getAppUrl } from "@/lib/env";
@@ -19,7 +20,7 @@ export default async function DashboardPage() {
       <PageShell showConnect={false} width="profile">
         <p className="mt-8 rounded-2xl border border-border bg-card px-5 py-4 text-sm text-destructive">
           No Instagram account is connected to this session.{" "}
-          <a className="underline" href="/api/auth/instagram">
+          <a className="underline" href="/connect">
             Connect Instagram
           </a>
           .
@@ -76,6 +77,9 @@ export default async function DashboardPage() {
             Your name and bio come from your Instagram profile and refresh on every sync. To change them, edit
             them on Instagram.
           </p>
+          <div className="mt-5 border-t border-border pt-4">
+            <DeleteAccountButton />
+          </div>
         </section>
 
         {view ? (

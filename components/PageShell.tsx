@@ -5,14 +5,20 @@ export function SiteFooter() {
     <footer className="mt-24 border-t border-border py-8 text-sm text-muted-foreground">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p>Verified, not self-reported.</p>
-        <div className="flex gap-4">
+        <nav className="flex flex-wrap gap-x-4 gap-y-2" aria-label="Legal">
           <a className="hover:text-foreground" href="/privacy">
             Privacy
           </a>
-          <a className="hover:text-foreground" href="/api/data-deletion">
+          <a className="hover:text-foreground" href="/terms">
+            Terms
+          </a>
+          <a className="hover:text-foreground" href="/data-deletion">
             Data deletion
           </a>
-        </div>
+          <a className="hover:text-foreground" href="/contact">
+            Contact
+          </a>
+        </nav>
       </div>
     </footer>
   );

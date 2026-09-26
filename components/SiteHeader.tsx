@@ -20,7 +20,7 @@ export function SiteHeader({ showConnect = true, note, container }: Props) {
           {note ? <p className="hidden text-sm text-muted-foreground sm:block">{note}</p> : null}
           {showConnect ? (
             <a
-              href="/api/auth/instagram"
+              href="/connect"
               className="btn-primary px-4 py-2 text-sm"
             >
               Connect Instagram

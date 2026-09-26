@@ -135,7 +135,11 @@ Manual **Sync now** uses the session cookie and only that creator’s account.
 | `/` | Marketing (demo recently-verified + leaderboard) |
 | `/dashboard` | Same profile brands see, plus sync, public-link toggle, sign out |
 | `/{handle}` | Public credential |
-| `/privacy` | Privacy policy (App Review) |
+| `/privacy` | Privacy policy |
+| `/terms` | Terms of Service |
+| `/contact` | Support email |
+| `/data-deletion` | Human deletion instructions + in-app delete |
+| `/connect` | What connecting Instagram does, then OAuth |
 | `/api/auth/instagram` | Start OAuth |
 | `/api/auth/instagram/callback` | Finish OAuth |
 | `/api/sync` | Manual or cron sync |

@@ -9,7 +9,8 @@ export async function GET() {
     endpoint: "Meta data-deletion callback",
     method: "POST",
     expects: "signed_request from Instagram / Facebook",
-    human: "Email hello@reeledin.com or use Instagram’s “Apps and websites” deletion flow. Meta will POST here; we delete the connected user, tokens, stats, audience snapshots, and profile.",
+    human: "Signed-in users can delete at /data-deletion. Anyone can email nine25ive.studios@gmail.com. Instagram Apps and websites deletion POSTs here; we delete the connected user, tokens, stats, audience snapshots, daily insights, and profile.",
+    instructions: `${getAppUrl()}/data-deletion`,
     status_page: `${getAppUrl()}/deletion-status`,
   });
 }
